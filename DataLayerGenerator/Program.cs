@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using DataLayerGenerator.GenerateTypes;
 
 namespace DataLayerGenerator
 {
@@ -10,6 +11,7 @@ namespace DataLayerGenerator
     {
         static void Main(string[] args)
         {
+            TableTypeGenerator.GenerateTypes();
         }
     }
 }
