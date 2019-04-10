@@ -1,0 +1,83 @@
+﻿<#@ template language="C#" hostspecific="true" debug="True" #>
+<#@ assembly name="System.Core" #>
+<#@ assembly name="System.Data" #>
+<#@ assembly name="System.Xml" #>
+<#@ assembly name="Microsoft.SqlServer.Smo" #>
+<#@ assembly name="Microsoft.SqlServer.ConnectionInfo" #>
+<#@ assembly name="Microsoft.SqlServer.Management.Sdk.Sfc" #>
+<#@ import namespace="System" #>
+<#@ import namespace="System.IO" #>
+<#@ import namespace="System.Linq" #>
+<#@ import namespace="System.Text" #>
+<#@ import namespace="Microsoft.SqlServer.Management.Smo" #>
+<#
+    //**********************************************************************************************
+    // This T4 generates POCOs from the specified DB and saves them to the specified folder which 
+    // is relative to the template's location. One file per table/POCO.
+    //**********************************************************************************************
+    //****************************
+    // DEFINE YOUR VARIABLES HERE
+    //****************************
+    // The SQL server name or IP
+    string sqlServer = "virtualhost\\sqlexpress";
+    // The SQL database to generate the interfaces for
+    string sqlDatabase = "proTrace_Jupiter_blank";
+    // The namespace to apply to the generated interfaces
+    string classNamespace = "Practicon.ProTrace.Datalayer.Repositories";
+    // The destination folder for the generated classes, relative to this file's location.
+    string destinationFolder = "Repositories";
+    // Loop over each table and create an Insight.Database repo!
+    Server server = new Server(sqlServer);
+    server.ConnectionContext.LoginSecure = true;
+    
+    server.ConnectionContext.Connect();
+    foreach (Table table in server.Databases[sqlDatabase].Tables)
+    {
+        // Skip sys tables
+        if (table.Name.StartsWith("sys"))
+        {
+            continue;
+        }
+#>
+using System.Collections.Generic;
+using Insight.Database;
+namespace <#= classNamespace #>
+{
+    public Interface <#= "I" + table.Name.Replace("tbl", "") + "Repository" #> 
+    {
+        [Sql("<#= "cip_" + table.Name.Replace("tbl", "") + "_Get" #>")]
+        IEnumerable<<#=table.Name.Replace("tbl", "")#>> Get();
+
+		[Sql("<#= "cip_" + table.Name.Replace("tbl", "") + "_Get" #>")]
+        <#=table.Name.Replace("tbl", "")#> Get(long index);
+
+		[Sql("<#= "cip_" + table.Name.Replace("tbl", "") + "_MergeBatch" #>")]
+        void Merge(IEnumerable<<#=table.Name.Replace("tbl", "")#>> table);
+
+		[Sql("<#= "cip_" + table.Name.Replace("tbl", "") + "_Merge" #>")]
+		void Merge(<#=table.Name.Replace("tbl", "")#> item);
+
+		[Sql("<#= "cip_" + table.Name.Replace("tbl", "") + "_DeleteBatch" #>")]
+        void Delete(IEnumerable<<#=table.Name.Replace("tbl", "")#>> table);
+
+		[Sql("<#= "cip_" + table.Name.Replace("tbl", "") + "_Delete" #>")]
+		void Delete(<#=table.Name.Replace("tbl", "")#> item);
+    }
+}      
+<#
+        // Write new POCO class to its own file
+        SaveOutput("I" + table.Name.Replace("tbl", "") + "Repository" + ".cs", destinationFolder);
+    } 
+#>
+<#+
+    void SaveOutput(string outputFileName, string destinationFolder)
+    {
+        // Write to destination folder
+        string templateDirectory = Path.Combine(Path.GetDirectoryName(Host.TemplateFile), destinationFolder);
+        string outputFilePath = Path.Combine(templateDirectory, outputFileName);
+        File.Delete(outputFilePath);
+        File.WriteAllText(outputFilePath, this.GenerationEnvironment.ToString()); 
+        // Flush generation
+        this.GenerationEnvironment.Remove(0, this.GenerationEnvironment.Length);
+    }
+#>
