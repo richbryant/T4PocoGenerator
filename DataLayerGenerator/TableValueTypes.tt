@@ -20,16 +20,21 @@
     //****************************
     // The SQL server name or IP
     string sqlServer = "virtualhost\\sqlexpress";
-    // The SQL database to generate the interfaces for
+    // The SQL username
+    //string sqlLogin = "admin";
+    // The SQL password
+    //string sqlPassword = "password";
+    // The SQL database to generate the POCOs for
     string sqlDatabase = "proTrace_Jupiter_blank";
-    // The namespace to apply to the generated interfaces
-    string classNamespace = "Practicon.ProTrace.Datalayer.Repositories";
+    // The namespace to apply to the generated classes
+    string classNamespace = "Practicon.ProTrace.Datalayer";
     // The destination folder for the generated classes, relative to this file's location.
-    string destinationFolder = "Repositories";
-    // Loop over each table and create an Insight.Database repo!
+    string destinationFolder = "Types";
+    // Loop over each table and create a class file!
     Server server = new Server(sqlServer);
     server.ConnectionContext.LoginSecure = true;
-    
+    //server.ConnectionContext.Login = sqlLogin;
+    //server.ConnectionContext.Password = sqlPassword;
     server.ConnectionContext.Connect();
     foreach (Table table in server.Databases[sqlDatabase].Tables)
     {
@@ -39,34 +44,27 @@
             continue;
         }
 #>
-using System.Collections.Generic
-using Insight.Database;
-namespace <#= classNamespace #>
-{
-    public interface <#= "I" + table.Name.Replace("tbl", "") + "Repository" #> 
-    {
-        [Sql("<#= "cip_" + table.Name.Replace("tbl", "") + "_Get" #>")]
-        IEnumerable<<#=table.Name.Replace("tbl", "")#>> Get();
-
-		[Sql("<#= "cip_" + table.Name.Replace("tbl", "") + "_Get" #>")]
-        <#=table.Name.Replace("tbl", "")#> Get(long index);
-
-		[Sql("<#= "cip_" + table.Name.Replace("tbl", "") + "_MergeBatch" #>")]
-        void Merge(IEnumerable<<#=table.Name.Replace("tbl", "")#>> table);
-
-		[Sql("<#= "cip_" + table.Name.Replace("tbl", "") + "_Merge" #>")]
-		void Merge(<#=table.Name.Replace("tbl", "")#> item);
-
-		[Sql("<#= "cip_" + table.Name.Replace("tbl", "") + "_DeleteBatch" #>")]
-        void Delete(IEnumerable<<#=table.Name.Replace("tbl", "")#>> table);
-
-		[Sql("<#= "cip_" + table.Name.Replace("tbl", "") + "_Delete" #>")]
-		void Delete(<#=table.Name.Replace("tbl", "")#> item);
+	IF EXISTS(SELECT name FROM sys.table_types WHERE name= '<#= table.Name.Replace("tbl", "").Replace("CIP", "Cip").Replace("OPC", "Opc") #>')
+	THEN 
+		BEGIN
+		DROP TYPE <#= table.Name.Replace("tbl", "").Replace("CIP", "Cip").Replace("OPC", "Opc") #>
+		END
+	CREATE TYPE <#= table.Name.Replace("tbl", "").Replace("CIP", "Cip").Replace("OPC", "Opc") #> AS TABLE(
+<# 
+        // Keep count so we don't whitespace the last property/column
+        int columnCount = table.Columns.Count;
+        int i = 0;
+        // Iterate all columns
+        foreach (Column col in table.Columns)
+        {
+		    i++;
+#>
+		<#= col.Name.Replace("fld", "")   col.DataType.Name #>
     }
 }      
 <#
         // Write new POCO class to its own file
-        SaveOutput("I" + table.Name.Replace("tbl", "") + "Repository" + ".cs", destinationFolder);
+        SaveOutput(table.Name.Replace("tbl", "") + ".cs", destinationFolder);
     } 
 #>
 <#+
