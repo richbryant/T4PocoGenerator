@@ -136,6 +136,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="GenerateSprocs\StoredProcedureGenerator.cs" />
     <Compile Include="Tidy.cs" />
     <Compile Include="GenerateTypes\TableTypeGenerator.cs" />
     <Compile Include="Generator.cs">
