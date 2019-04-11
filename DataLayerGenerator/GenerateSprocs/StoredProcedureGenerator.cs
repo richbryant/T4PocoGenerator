@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.Data.Common;
 using System.Linq;
 using System.Text;
 using Microsoft.SqlServer.Management.Smo;
@@ -13,7 +14,7 @@ namespace DataLayerGenerator.GenerateSprocs
             server.ConnectionContext.LoginSecure = true;
             server.ConnectionContext.Connect();
 
-            var dbName = "proTrace_Jupiter_blank";
+            const string dbName = "proTrace_Jupiter_blank";
             var db = server.Databases[dbName];
 
             const string prefix = "x_";
@@ -26,7 +27,8 @@ namespace DataLayerGenerator.GenerateSprocs
             
             foreach (Table table in db.Tables)
             {
-                if (table.Name.StartsWith("sys"))
+                if (table.Name.StartsWith("sys") || table.Name.StartsWith("tblMimicDataLogged_") 
+                                                 || table.Name.StartsWith("tblMimicSnapshotdata_") || table.Name.StartsWith("tblMimicSnapshots_"))
                 {
                     continue;
                 }
@@ -36,9 +38,34 @@ namespace DataLayerGenerator.GenerateSprocs
                 {
                     continue;
                 }
-                //CreateGetSproc(table, db, prefix);
+                CreateGetSproc(table, db, prefix);
                 CreateMergeSproc(table, db, prefix);
+                CreateMergeBatchSproc(table, db, prefix);
+                CreateDeleteSproc(table, db, prefix);
+                CreateDeleteBatchSproc(table, db, prefix);
             }
+        }
+
+        private static void CreateGetSproc(Table table, Database db, string prefix)
+        {
+            var sproc = new StringBuilder();
+            sproc.Append("SELECT " + table.Columns[0].Name + "\n");
+            for (var i = 1; i < table.Columns.Count; i++)
+            {
+                sproc.Append("\t," + table.Columns[i].Name + "\n");
+            }
+
+            sproc.Append("FROM " + table.Name + " \n");
+            sproc.Append("WHERE (@index is NULL OR (fldIndex = @index))\n");
+
+            var sp = new StoredProcedure(db, prefix + table.Name + "Get")
+            {
+                TextMode = false, AnsiNullsStatus = false, QuotedIdentifierStatus = false
+            };
+            var param = new StoredProcedureParameter(sp, "@index", DataType.BigInt);
+            sp.Parameters.Add(param);
+            sp.TextBody = sproc.ToString();
+            sp.Create();
         }
 
         private static void CreateMergeSproc(Table table, Database db, string prefix)
@@ -63,7 +90,7 @@ namespace DataLayerGenerator.GenerateSprocs
                 sproc.Append(i < columnsList.Count - 1 ? " \n" : ") \n");
             }
 
-            sproc.Append("\t\tVALUES(@" + Tidy.Clean(columnsList[0] +" \n"));
+            sproc.Append("\t\tVALUES(@" + Tidy.Clean(columnsList[0] + " \n"));
             for (var i = 1; i < columnsList.Count; i++)
             {
                 sproc.Append("\t\t\t,@" + Tidy.Clean(columnsList[i]) + "");
@@ -109,7 +136,7 @@ namespace DataLayerGenerator.GenerateSprocs
                 var p = new StoredProcedureParameter(sp, "@" + Tidy.Clean(column.Name), column.DataType);
                 sp.Parameters.Add(p);
             }
-            
+
             sp.TextBody = sproc.ToString();
             sp.Create();
         }
@@ -170,24 +197,45 @@ namespace DataLayerGenerator.GenerateSprocs
             sp.Create();
         }
 
-        private static void CreateGetSproc(Table table, Database db, string prefix)
+        private static void CreateDeleteSproc(Table table, Database db, string prefix)
         {
-            var sproc = new StringBuilder();
-            sproc.Append("SELECT " + table.Columns[0].Name + "\n");
-            for (var i = 1; i < table.Columns.Count; i++)
-            {
-                sproc.Append("\t," + table.Columns[i].Name + "\n");
-            }
+            var sproc = new StringBuilder("DELETE FROM " + table.Name + "\n");
+            sproc.Append("WHERE fldIndex = @index");
 
-            sproc.Append("FROM " + table.Name + " \n");
-            sproc.Append("WHERE (@index is NULL OR (fldIndex = @index))\n");
-
-            var sp = new StoredProcedure(db, prefix + table.Name + "Get")
+            var sp = new StoredProcedure(db, prefix + table.Name + "Delete")
             {
-                TextMode = false, AnsiNullsStatus = false, QuotedIdentifierStatus = false
+                TextMode = false,
+                AnsiNullsStatus = false,
+                QuotedIdentifierStatus = false
             };
-            var param = new StoredProcedureParameter(sp, "@index", DataType.BigInt);
+
+            var p = new StoredProcedureParameter(sp, "@index", DataType.BigInt);
+            sp.Parameters.Add(p);
+
+            sp.TextBody = sproc.ToString();
+            sp.Create();
+        }
+
+        private static void CreateDeleteBatchSproc(Table table, Database db, string prefix)
+        {
+            var tableType = Tidy.Clean(table.Name);
+            var type = db.UserDefinedTableTypes[tableType];
+
+            var sproc = new StringBuilder("DELETE FROM " + table.Name + "\n");
+            sproc.Append("WHERE fldIndex IN (SELECT [Index] FROM @table)");
+
+            var sp = new StoredProcedure(db, prefix + table.Name + "DeleteBatch")
+            {
+                TextMode = false,
+                AnsiNullsStatus = false,
+                QuotedIdentifierStatus = false
+            };
+            var param = new StoredProcedureParameter(sp, "@table", new DataType(db.UserDefinedTableTypes[tableType]))
+            {
+                IsReadOnly = true
+            };
             sp.Parameters.Add(param);
+
             sp.TextBody = sproc.ToString();
             sp.Create();
         }
