@@ -1,5 +1,4 @@
 ﻿using System.Collections.Generic;
-using System.Data.Common;
 using System.Linq;
 using System.Text;
 using Microsoft.SqlServer.Management.Smo;
@@ -219,8 +218,7 @@ namespace DataLayerGenerator.GenerateSprocs
         private static void CreateDeleteBatchSproc(Table table, Database db, string prefix)
         {
             var tableType = Tidy.Clean(table.Name);
-            var type = db.UserDefinedTableTypes[tableType];
-
+            
             var sproc = new StringBuilder("DELETE FROM " + table.Name + "\n");
             sproc.Append("WHERE fldIndex IN (SELECT [Index] FROM @table)");
 
