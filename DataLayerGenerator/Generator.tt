@@ -19,11 +19,7 @@
     // DEFINE YOUR VARIABLES HERE
     //****************************
     // The SQL server name or IP
-    string sqlServer = "virtualhost\\sqlexpress";
-    // The SQL username
-    //string sqlLogin = "admin";
-    // The SQL password
-    //string sqlPassword = "password";
+    string sqlServer = "C877";
     // The SQL database to generate the POCOs for
     string sqlDatabase = "proTrace_Jupiter_blank";
     // The namespace to apply to the generated classes
@@ -39,7 +35,8 @@
     foreach (Table table in server.Databases[sqlDatabase].Tables)
     {
         // Skip sys tables
-        if (table.Name.StartsWith("sys"))
+        if(table.Name.StartsWith("sys") || table.Name.StartsWith("tblMimicDataLogged_") 
+                                                 || table.Name.StartsWith("tblMimicSnapshotdata_") || table.Name.StartsWith("tblMimicSnapshots_"))
         {
             continue;
         }

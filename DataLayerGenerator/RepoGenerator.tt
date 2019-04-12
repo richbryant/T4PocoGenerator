@@ -19,7 +19,7 @@
     // DEFINE YOUR VARIABLES HERE
     //****************************
     // The SQL server name or IP
-    string sqlServer = "virtualhost\\sqlexpress";
+    string sqlServer = "C877";
     // The SQL database to generate the interfaces for
     string sqlDatabase = "proTrace_Jupiter_blank";
     // The namespace to apply to the generated interfaces
@@ -34,7 +34,8 @@
     foreach (Table table in server.Databases[sqlDatabase].Tables)
     {
         // Skip sys tables
-        if (table.Name.StartsWith("sys"))
+        if(table.Name.StartsWith("sys") || table.Name.StartsWith("tblMimicDataLogged_") 
+                                                 || table.Name.StartsWith("tblMimicSnapShotdata_") || table.Name.StartsWith("tblMimicSnapShots_"))
         {
             continue;
         }
@@ -45,22 +46,19 @@ namespace <#= classNamespace #>
 {
     public interface <#= "I" + table.Name.Replace("tbl", "") + "Repository" #> 
     {
-        [Sql("<#= "cip_" + table.Name.Replace("tbl", "") + "_Get" #>")]
-        IEnumerable<<#=table.Name.Replace("tbl", "")#>> Get();
+        [Sql("<#= "x_" + table.Name.Replace("tbl", "") + "_Get" #>")]
+        <#=table.Name.Replace("tbl", "")#> Get(long index = null);
 
-		[Sql("<#= "cip_" + table.Name.Replace("tbl", "") + "_Get" #>")]
-        <#=table.Name.Replace("tbl", "")#> Get(long index);
-
-		[Sql("<#= "cip_" + table.Name.Replace("tbl", "") + "_MergeBatch" #>")]
+		[Sql("<#= "x_" + table.Name.Replace("tbl", "") + "_MergeBatch" #>")]
         void Merge(IEnumerable<<#=table.Name.Replace("tbl", "")#>> table);
 
-		[Sql("<#= "cip_" + table.Name.Replace("tbl", "") + "_Merge" #>")]
+		[Sql("<#= "x_" + table.Name.Replace("tbl", "") + "_Merge" #>")]
 		void Merge(<#=table.Name.Replace("tbl", "")#> item);
 
-		[Sql("<#= "cip_" + table.Name.Replace("tbl", "") + "_DeleteBatch" #>")]
+		[Sql("<#= "x_" + table.Name.Replace("tbl", "") + "_DeleteBatch" #>")]
         void Delete(IEnumerable<<#=table.Name.Replace("tbl", "")#>> table);
 
-		[Sql("<#= "cip_" + table.Name.Replace("tbl", "") + "_Delete" #>")]
+		[Sql("<#= "x_" + table.Name.Replace("tbl", "") + "_Delete" #>")]
 		void Delete(<#=table.Name.Replace("tbl", "")#> item);
     }
 }      

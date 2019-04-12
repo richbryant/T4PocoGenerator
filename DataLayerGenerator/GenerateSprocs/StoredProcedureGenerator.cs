@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using Microsoft.SqlServer.Management.Smo;
@@ -9,14 +10,15 @@ namespace DataLayerGenerator.GenerateSprocs
     {
         public static void GenerateProcedures()
         {
-            var server = new Server("virtualhost\\sqlexpress");
+            var server = new Server("C877");
             server.ConnectionContext.LoginSecure = true;
             server.ConnectionContext.Connect();
 
             const string dbName = "proTrace_Jupiter_blank";
             var db = server.Databases[dbName];
 
-            const string prefix = "x_";
+            const string prefix = "temp_";
+            
 
             var sprocNames = new List<string>();
             foreach (StoredProcedure sp in db.StoredProcedures)
@@ -32,20 +34,38 @@ namespace DataLayerGenerator.GenerateSprocs
                     continue;
                 }
 
+                DataType indexDataType = DataType.BigInt;
+                foreach (Column column in table.Columns)
+                {
+                    if (column.InPrimaryKey)
+                    {
+                        indexDataType = column.DataType;
+                    }
+                }
+
                 var checkList = sprocNames.Where(x => x.StartsWith(prefix + table.Name));
                 if (checkList.Any())
                 {
                     continue;
                 }
-                CreateGetSproc(table, db, prefix);
-                CreateMergeSproc(table, db, prefix);
-                CreateMergeBatchSproc(table, db, prefix);
-                CreateDeleteSproc(table, db, prefix);
-                CreateDeleteBatchSproc(table, db, prefix);
+
+                try
+                {
+                    CreateGetSproc(table, db, prefix, indexDataType);
+                    CreateGetBatchSproc(table, db, prefix);
+                    CreateMergeSproc(table, db, prefix);
+                    CreateMergeBatchSproc(table, db, prefix);
+                    CreateDeleteSproc(table, db, prefix, indexDataType);
+                    CreateDeleteBatchSproc(table, db, prefix);
+                }
+                catch (Exception e)
+                {
+                    Console.WriteLine(e.Message);
+                }
             }
         }
 
-        private static void CreateGetSproc(Table table, Database db, string prefix)
+        private static void CreateGetSproc(Table table, Database db, string prefix, DataType indexType)
         {
             var sproc = new StringBuilder();
             sproc.Append("SELECT " + table.Columns[0].Name + "\n");
@@ -61,8 +81,30 @@ namespace DataLayerGenerator.GenerateSprocs
             {
                 TextMode = false, AnsiNullsStatus = false, QuotedIdentifierStatus = false
             };
-            var param = new StoredProcedureParameter(sp, "@index", DataType.BigInt);
+            var param = new StoredProcedureParameter(sp, "@index", indexType);
+            param.DefaultValue = "NULL";
             sp.Parameters.Add(param);
+            sp.TextBody = sproc.ToString();
+            sp.Create();
+        }
+
+        private static void CreateGetBatchSproc(Table table, Database db, string prefix)
+        {
+            var sproc = new StringBuilder();
+            sproc.Append("SELECT " + table.Columns[0].Name + "\n");
+            for (var i = 1; i < table.Columns.Count; i++)
+            {
+                sproc.Append("\t," + table.Columns[i].Name + "\n");
+            }
+
+            sproc.Append("FROM " + table.Name + " \n");
+            
+            var sp = new StoredProcedure(db, prefix + table.Name + "GetBatch")
+            {
+                TextMode = false,
+                AnsiNullsStatus = false,
+                QuotedIdentifierStatus = false
+            };
             sp.TextBody = sproc.ToString();
             sp.Create();
         }
@@ -137,7 +179,14 @@ namespace DataLayerGenerator.GenerateSprocs
             }
 
             sp.TextBody = sproc.ToString();
-            sp.Create();
+            try
+            {
+                sp.Create();
+            }
+            catch (Exception ex)
+            {
+                Console.Write(ex.Message);
+            }
         }
 
         private static void CreateMergeBatchSproc(Table table, Database db, string prefix)
@@ -196,7 +245,7 @@ namespace DataLayerGenerator.GenerateSprocs
             sp.Create();
         }
 
-        private static void CreateDeleteSproc(Table table, Database db, string prefix)
+        private static void CreateDeleteSproc(Table table, Database db, string prefix, DataType indexType)
         {
             var sproc = new StringBuilder("DELETE FROM " + table.Name + "\n");
             sproc.Append("WHERE fldIndex = @index");
@@ -208,7 +257,7 @@ namespace DataLayerGenerator.GenerateSprocs
                 QuotedIdentifierStatus = false
             };
 
-            var p = new StoredProcedureParameter(sp, "@index", DataType.BigInt);
+            var p = new StoredProcedureParameter(sp, "@index", indexType);
             sp.Parameters.Add(p);
 
             sp.TextBody = sproc.ToString();

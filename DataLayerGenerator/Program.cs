@@ -12,6 +12,7 @@ namespace DataLayerGenerator
     {
         static void Main(string[] args)
         {
+            TableTypeGenerator.GenerateTypes();
             StoredProcedureGenerator.GenerateProcedures();
         }
     }

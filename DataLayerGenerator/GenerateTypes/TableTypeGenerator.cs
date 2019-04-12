@@ -6,7 +6,7 @@ namespace DataLayerGenerator.GenerateTypes
     {
         public static void GenerateTypes()
         {
-            var server = new Server("virtualhost\\sqlexpress");
+            var server = new Server("C877");
             server.ConnectionContext.LoginSecure = true;
             server.ConnectionContext.Connect();
 
