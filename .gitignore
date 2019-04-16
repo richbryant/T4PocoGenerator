@@ -260,3 +260,7 @@ paket-files/
 # Python Tools for Visual Studio (PTVS)
 __pycache__/
 *.pyc
+/DataLayerGenerator/Insight
+/DataLayerGenerator/Models
+/DataLayerGenerator/Repositories
+/DataLayerGenerator/ViewModels

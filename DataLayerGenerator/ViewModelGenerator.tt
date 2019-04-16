@@ -12,7 +12,7 @@
 <#@ import namespace="Microsoft.SqlServer.Management.Smo" #>
 <#
     //**********************************************************************************************
-    // This T4 generates POCOs from the specified DB and saves them to the specified folder which 
+    // This T4 generates ViewModels from the specified DB and saves them to the specified folder which 
     // is relative to the template's location. One file per table/POCO.
     //**********************************************************************************************
     //****************************
@@ -23,9 +23,9 @@
     // The SQL database to generate the POCOs for
     string sqlDatabase = "proTrace_Jupiter_blank";
     // The namespace to apply to the generated classes
-    string classNamespace = "Practicon.Datalayer.Models";
+    string classNamespace = "Practicon.Datalayer.ViewModels";
     // The destination folder for the generated classes, relative to this file's location.
-    string destinationFolder = "Models";
+    string destinationFolder = "ViewModels";
     // Loop over each table and create a class file!
     Server server = new Server(sqlServer);
     server.ConnectionContext.LoginSecure = true;
@@ -40,15 +40,20 @@
         {
             continue;
         }
+		string tableName = table.Name.Replace("tbl", "");
+		string className = table.Name.Replace("tbl", "") + "ViewModel";
+
 #>
 using System;
+using Prism.Mvvm;
+using Practicon.Datalayer.Models;
 namespace <#= classNamespace #>
 {
     /// <summary>
     /// Represents a <#= table.Name #>.
     /// NOTE: This class is generated from a T4 template.
     /// </summary>
-    public class <#= table.Name.Replace("tbl", "") #> 
+    public class <#= className #> : BindableBase
     {
 <# 
         // Keep count so we don't whitespace the last property/column
@@ -57,6 +62,8 @@ namespace <#= classNamespace #>
         // Iterate all columns
         foreach (Column col in table.Columns)
         {
+			string colName = col.Name.Replace("fld", "");
+			string fldName = "_" + Char.ToLowerInvariant(colName[0]) + colName.Substring(1);
             i++;
             string propertyType = GetNetDataType(col.DataType.Name);
             // If we can't map it, skip it
@@ -71,7 +78,14 @@ namespace <#= classNamespace #>
                 propertyType += "?";
             }
 #>
-        public <#= propertyType #> <#= col.Name.Replace("fld", "") #> { get; set; }
+		private <#= propertyType #> <#= fldName #>;
+
+        public <#= propertyType #> <#= colName #> 
+		{ 
+			get => <#= fldName #>;
+			set => SetProperty(ref <#= fldName #>, value);
+		}
+
 <#
             // Do we insert the space?
             if (i != columnCount)
@@ -83,11 +97,24 @@ namespace <#= classNamespace #>
 <#
         }
 #>
+
+		public static <#= className #> New(<#= tableName #> data)
+		{
+			var item = new <#= className #>();
+<#		foreach(Column col in table.Columns)
+		{
+			string colName = col.Name.Replace("fld", "");
+#>
+			item.<#= colName #> = data.<#= colName #>;
+<#
+		}
+#>			return item;
+		}
     }
 }      
 <#
         // Write new POCO class to its own file
-        SaveOutput(table.Name.Replace("tbl", "") + ".cs", destinationFolder);
+        SaveOutput(className + ".cs", destinationFolder);
     } 
 #>
 <#+

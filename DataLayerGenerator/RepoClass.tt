@@ -23,10 +23,10 @@
     // The SQL database to generate the interfaces for
     string sqlDatabase = "proTrace_Jupiter_blank";
     // The namespace to apply to the generated interfaces
-    string classNamespace = "Practicon.Datalayer.Insight";
+    string classNamespace = "Practicon.Datalayer.Repositories";
     // The destination folder for the generated classes, relative to this file's location.
-    string destinationFolder = "Insight";
-    // Loop over each table and create an Insight.Database repo!
+    string destinationFolder = "Repositories";
+    // Loop over each table and create a repo class
     Server server = new Server(sqlServer);
     server.ConnectionContext.LoginSecure = true;
     
@@ -40,35 +40,104 @@
             continue;
         }
 #>
+using System;
 using System.Collections.Generic;
 using Insight.Database;
+using Serilog;
 using Practicon.Datalayer.Models;
+using Practicon.Datalayer.Insight;
+using Practicon.Datalayer.Interfaces;
 namespace <#= classNamespace #>
 {
-    public interface <#= "I" + table.Name.Replace("tbl", "") + "Data" #> 
+    public class <#= table.Name.Replace("tbl", "") + "Repository" #> : <#= "I" + table.Name.Replace("tbl", "") + "Repository" #>
     {
-        [Sql("<#= "x_" + table.Name.Replace("tbl", "") + "_Get" #>")]
-        <#=table.Name.Replace("tbl", "")#> Get(long id);
+	    private readonly <#= "I" + table.Name.Replace("tbl", "") + "Data"#> _data;
+		private readonly ILogger _log;
 
-		[Sql("<#= "x_" + table.Name.Replace("tbl", "") + "_Get" #>")]
-        IEnumerable<<#=table.Name.Replace("tbl", "")#>> Get();
+	    public <#= table.Name.Replace("tbl", "") + "Repository" #>(<#= "I" + table.Name.Replace("tbl", "") + "Data data"  #>, ILogger log)
+		{
+			_data = data;
+			_log = log;
+		}
 
-		[Sql("<#= "x_" + table.Name.Replace("tbl", "") + "_MergeBatch" #>")]
-        void Merge(IEnumerable<<#=table.Name.Replace("tbl", "")#>> list);
+		public <#=table.Name.Replace("tbl", "")#> Get(long id)
+		{
+			try
+			{
+				return _data.Get(id);
+			}
+			catch(Exception ex)
+			{
+				_log.Error(ex.Message);
+			}
+			return default(<#=table.Name.Replace("tbl", "")#>);
+		}
 
-		[Sql("<#= "x_" + table.Name.Replace("tbl", "") + "_Merge" #>")]
-		void Merge(<#=table.Name.Replace("tbl", "")#> item);
+		public IEnumerable<<#=table.Name.Replace("tbl", "")#>> Get()
+		{
+			try
+			{
+				return _data.Get();
+			}
+			catch (Exception ex)
+			{
+				_log.Error(ex.Message);
+				return default(IEnumerable<<#=table.Name.Replace("tbl", "")#>>);
+			}
+		}
+        
+	    public void Merge(IEnumerable<<#=table.Name.Replace("tbl", "")#>> list)
+		{
+			try
+			{
+				_data.Merge(list);
+			}
+			catch (Exception ex)
+			{
+				_log.Error(ex.Message);
+			}
+		}
 
-		[Sql("<#= "x_" + table.Name.Replace("tbl", "") + "_DeleteBatch" #>")]
-        void Delete(IEnumerable<<#=table.Name.Replace("tbl", "")#>> list);
+		public void Merge(<#=table.Name.Replace("tbl", "")#> item)
+		{
+			try
+			{
+				_data.Merge(item);
+			}
+			catch (Exception ex)
+			{
+				_log.Error(ex.Message);
+			}
+		}
 
-		[Sql("<#= "x_" + table.Name.Replace("tbl", "") + "_Delete" #>")]
-		void Delete(long id);
+		public void Delete(IEnumerable<<#=table.Name.Replace("tbl", "")#>> list)
+		{
+			try
+			{
+				_data.Delete(list);
+			}
+			catch (Exception ex)
+			{
+				_log.Error(ex.Message);
+			}
+		}
+
+		public void Delete(long id)
+		{
+			try
+			{
+				_data.Delete(id);
+			}
+			catch (Exception ex)
+			{
+				_log.Error(ex.Message);
+			}
+		}
     }
 }      
 <#
-        // Write new POCO class to its own file
-        SaveOutput("I" + table.Name.Replace("tbl", "") + "Data" + ".cs", destinationFolder);
+        // Write new repo class to its own file
+        SaveOutput(table.Name.Replace("tbl", "") + "Repository" + ".cs", destinationFolder);
     } 
 #>
 <#+

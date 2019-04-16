@@ -8,6 +8,9 @@ namespace DataLayerGenerator.GenerateSprocs
 {
     public static class StoredProcedureGenerator
     {
+        /// <summary>
+        /// 
+        /// </summary>
         public static void GenerateProcedures()
         {
             var server = new Server("C877");
@@ -17,7 +20,7 @@ namespace DataLayerGenerator.GenerateSprocs
             const string dbName = "proTrace_Jupiter_blank";
             var db = server.Databases[dbName];
 
-            const string prefix = "temp_";
+            const string prefix = "x_";
             
 
             var sprocNames = new List<string>();
@@ -52,7 +55,6 @@ namespace DataLayerGenerator.GenerateSprocs
                 try
                 {
                     CreateGetSproc(table, db, prefix, indexDataType);
-                    CreateGetBatchSproc(table, db, prefix);
                     CreateMergeSproc(table, db, prefix);
                     CreateMergeBatchSproc(table, db, prefix);
                     CreateDeleteSproc(table, db, prefix, indexDataType);
@@ -75,40 +77,19 @@ namespace DataLayerGenerator.GenerateSprocs
             }
 
             sproc.Append("FROM " + table.Name + " \n");
-            sproc.Append("WHERE (@index is NULL OR (fldIndex = @index))\n");
+            sproc.Append("WHERE (@id is NULL OR (fldIndex = @id))\n");
 
             var sp = new StoredProcedure(db, prefix + table.Name + "Get")
             {
                 TextMode = false, AnsiNullsStatus = false, QuotedIdentifierStatus = false
             };
-            var param = new StoredProcedureParameter(sp, "@index", indexType);
-            param.DefaultValue = "NULL";
+            var param = new StoredProcedureParameter(sp, "@id", indexType) {DefaultValue = "NULL"};
             sp.Parameters.Add(param);
             sp.TextBody = sproc.ToString();
             sp.Create();
         }
 
-        private static void CreateGetBatchSproc(Table table, Database db, string prefix)
-        {
-            var sproc = new StringBuilder();
-            sproc.Append("SELECT " + table.Columns[0].Name + "\n");
-            for (var i = 1; i < table.Columns.Count; i++)
-            {
-                sproc.Append("\t," + table.Columns[i].Name + "\n");
-            }
-
-            sproc.Append("FROM " + table.Name + " \n");
-            
-            var sp = new StoredProcedure(db, prefix + table.Name + "GetBatch")
-            {
-                TextMode = false,
-                AnsiNullsStatus = false,
-                QuotedIdentifierStatus = false
-            };
-            sp.TextBody = sproc.ToString();
-            sp.Create();
-        }
-
+        
         private static void CreateMergeSproc(Table table, Database db, string prefix)
         {
             var tableType = Tidy.Clean(table.Name);
@@ -123,8 +104,8 @@ namespace DataLayerGenerator.GenerateSprocs
                 }
             }
 
-            var sproc = new StringBuilder("DECLARE @table " + tableType + "; \n");
-            sproc.Append("INSERT INTO @table ([" + Tidy.Clean(columnsList[0]) + "] \n");
+            var sproc = new StringBuilder("DECLARE @list " + tableType + "; \n");
+            sproc.Append("INSERT INTO @list ([" + Tidy.Clean(columnsList[0]) + "] \n");
             for (var i = 1; i < columnsList.Count; i++)
             {
                 sproc.Append("\t\t\t,[" + Tidy.Clean(columnsList[i]) + "]");
@@ -140,7 +121,7 @@ namespace DataLayerGenerator.GenerateSprocs
 
             sproc.Append("\n\n");
             sproc.Append("MERGE " + table.Name + " AS target \n");
-            sproc.Append("USING @table as source \n");
+            sproc.Append("USING @list as source \n");
             sproc.Append("ON target.fldIndex = source.[Index] \n");
             sproc.Append("\t WHEN MATCHED THEN \n");
             sproc.Append("\t\t UPDATE SET \n");
@@ -204,7 +185,7 @@ namespace DataLayerGenerator.GenerateSprocs
             }
 
             var sproc = new StringBuilder("MERGE " + table.Name + " AS target \n");
-            sproc.Append("USING @table as source \n");
+            sproc.Append("USING @list as source \n");
             sproc.Append("ON target.fldIndex = source.[Index] \n");
             sproc.Append("\t WHEN MATCHED THEN \n");
             sproc.Append("\t\t UPDATE SET \n");
@@ -235,7 +216,7 @@ namespace DataLayerGenerator.GenerateSprocs
                 AnsiNullsStatus = false,
                 QuotedIdentifierStatus = false
             };
-            var param = new StoredProcedureParameter(sp, "@table", new DataType(db.UserDefinedTableTypes[tableType]))
+            var param = new StoredProcedureParameter(sp, "@list", new DataType(db.UserDefinedTableTypes[tableType]))
             {
                 IsReadOnly = true
             };
@@ -248,7 +229,7 @@ namespace DataLayerGenerator.GenerateSprocs
         private static void CreateDeleteSproc(Table table, Database db, string prefix, DataType indexType)
         {
             var sproc = new StringBuilder("DELETE FROM " + table.Name + "\n");
-            sproc.Append("WHERE fldIndex = @index");
+            sproc.Append("WHERE fldIndex = @id");
 
             var sp = new StoredProcedure(db, prefix + table.Name + "Delete")
             {
@@ -257,7 +238,7 @@ namespace DataLayerGenerator.GenerateSprocs
                 QuotedIdentifierStatus = false
             };
 
-            var p = new StoredProcedureParameter(sp, "@index", indexType);
+            var p = new StoredProcedureParameter(sp, "@id", indexType);
             sp.Parameters.Add(p);
 
             sp.TextBody = sproc.ToString();
@@ -269,7 +250,7 @@ namespace DataLayerGenerator.GenerateSprocs
             var tableType = Tidy.Clean(table.Name);
             
             var sproc = new StringBuilder("DELETE FROM " + table.Name + "\n");
-            sproc.Append("WHERE fldIndex IN (SELECT [Index] FROM @table)");
+            sproc.Append("WHERE fldIndex IN (SELECT [Index] FROM @list)");
 
             var sp = new StoredProcedure(db, prefix + table.Name + "DeleteBatch")
             {
@@ -277,7 +258,7 @@ namespace DataLayerGenerator.GenerateSprocs
                 AnsiNullsStatus = false,
                 QuotedIdentifierStatus = false
             };
-            var param = new StoredProcedureParameter(sp, "@table", new DataType(db.UserDefinedTableTypes[tableType]))
+            var param = new StoredProcedureParameter(sp, "@list", new DataType(db.UserDefinedTableTypes[tableType]))
             {
                 IsReadOnly = true
             };

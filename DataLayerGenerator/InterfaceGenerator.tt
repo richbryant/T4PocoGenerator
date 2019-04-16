@@ -23,10 +23,10 @@
     // The SQL database to generate the interfaces for
     string sqlDatabase = "proTrace_Jupiter_blank";
     // The namespace to apply to the generated interfaces
-    string classNamespace = "Practicon.Datalayer.Insight";
+    string classNamespace = "Practicon.Datalayer.Interfaces";
     // The destination folder for the generated classes, relative to this file's location.
-    string destinationFolder = "Insight";
-    // Loop over each table and create an Insight.Database repo!
+    string destinationFolder = "Interfaces";
+    // Loop over each table and create a repo class
     Server server = new Server(sqlServer);
     server.ConnectionContext.LoginSecure = true;
     
@@ -41,34 +41,50 @@
         }
 #>
 using System.Collections.Generic;
-using Insight.Database;
 using Practicon.Datalayer.Models;
 namespace <#= classNamespace #>
 {
-    public interface <#= "I" + table.Name.Replace("tbl", "") + "Data" #> 
+    public interface <#= "I" + table.Name.Replace("tbl", "") + "Repository" #> 
     {
-        [Sql("<#= "x_" + table.Name.Replace("tbl", "") + "_Get" #>")]
-        <#=table.Name.Replace("tbl", "")#> Get(long id);
+		/// <summary>
+        /// Return a single instance of <#=table.Name.Replace("tbl", "")#>
+        /// </summary>
+	    <#=table.Name.Replace("tbl", "")#> Get(long id);
+		
+		/// <summary>
+		/// Return an enumerable collection of <#=table.Name.Replace("tbl", "")#>
+		/// </summary>
+		IEnumerable<<#=table.Name.Replace("tbl", "")#>> Get();
+		
+		
+		/// <summary>
+		/// Insert or update a list of <#=table.Name.Replace("tbl", "")#>
+		/// </summary>
+	    void Merge(IEnumerable<<#=table.Name.Replace("tbl", "")#>> list);
+		
 
-		[Sql("<#= "x_" + table.Name.Replace("tbl", "") + "_Get" #>")]
-        IEnumerable<<#=table.Name.Replace("tbl", "")#>> Get();
-
-		[Sql("<#= "x_" + table.Name.Replace("tbl", "") + "_MergeBatch" #>")]
-        void Merge(IEnumerable<<#=table.Name.Replace("tbl", "")#>> list);
-
-		[Sql("<#= "x_" + table.Name.Replace("tbl", "") + "_Merge" #>")]
+		/// <summary>
+		/// Insert or update an instance of <#=table.Name.Replace("tbl", "")#>
+		/// </summary>
 		void Merge(<#=table.Name.Replace("tbl", "")#> item);
+		
 
-		[Sql("<#= "x_" + table.Name.Replace("tbl", "") + "_DeleteBatch" #>")]
-        void Delete(IEnumerable<<#=table.Name.Replace("tbl", "")#>> list);
+		/// <summary>
+		/// Delete a list of <#=table.Name.Replace("tbl", "")#>
+		/// </summary>
+		void Delete(IEnumerable<<#=table.Name.Replace("tbl", "")#>> list);
+		
 
-		[Sql("<#= "x_" + table.Name.Replace("tbl", "") + "_Delete" #>")]
+		/// <summary>
+		/// Delete an instance of <#=table.Name.Replace("tbl", "")#>
+		/// </summary>
 		void Delete(long id);
+		
     }
 }      
 <#
-        // Write new POCO class to its own file
-        SaveOutput("I" + table.Name.Replace("tbl", "") + "Data" + ".cs", destinationFolder);
+        // Write new repo class to its own file
+        SaveOutput("I" + table.Name.Replace("tbl", "") + "Repository" + ".cs", destinationFolder);
     } 
 #>
 <#+
