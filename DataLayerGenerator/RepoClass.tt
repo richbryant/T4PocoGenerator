@@ -60,7 +60,7 @@ namespace <#= classNamespace #>
 			_log = log;
 		}
 
-		public <#=table.Name.Replace("tbl", "")#> Get(long id)
+		public <#= table.Name #> Get(long id)
 		{
 			try
 			{
@@ -70,10 +70,10 @@ namespace <#= classNamespace #>
 			{
 				_log.Error(ex.Message);
 			}
-			return default(<#=table.Name.Replace("tbl", "")#>);
+			return default(<#= table.Name #>);
 		}
 
-		public IEnumerable<<#=table.Name.Replace("tbl", "")#>> Get()
+		public IEnumerable<<#= table.Name #>> Get()
 		{
 			try
 			{
@@ -82,11 +82,11 @@ namespace <#= classNamespace #>
 			catch (Exception ex)
 			{
 				_log.Error(ex.Message);
-				return default(IEnumerable<<#=table.Name.Replace("tbl", "")#>>);
+				return default(IEnumerable<<#= table.Name #>>);
 			}
 		}
         
-	    public void Merge(IEnumerable<<#=table.Name.Replace("tbl", "")#>> list)
+	    public void Merge(IEnumerable<<#= table.Name #>> list)
 		{
 			try
 			{
@@ -98,7 +98,7 @@ namespace <#= classNamespace #>
 			}
 		}
 
-		public void Merge(<#=table.Name.Replace("tbl", "")#> item)
+		public void Merge(<#= table.Name #> item)
 		{
 			try
 			{
@@ -110,7 +110,7 @@ namespace <#= classNamespace #>
 			}
 		}
 
-		public void Delete(IEnumerable<<#=table.Name.Replace("tbl", "")#>> list)
+		public void Delete(IEnumerable<<#= table.Name #>> list)
 		{
 			try
 			{

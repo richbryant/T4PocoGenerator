@@ -47,36 +47,36 @@ namespace <#= classNamespace #>
     public interface <#= "I" + table.Name.Replace("tbl", "") + "Repository" #> 
     {
 		/// <summary>
-        /// Return a single instance of <#=table.Name.Replace("tbl", "")#>
+        /// Return a single instance of <#= table.Name #>
         /// </summary>
-	    <#=table.Name.Replace("tbl", "")#> Get(long id);
+	    <#= table.Name #> Get(long id);
 		
 		/// <summary>
-		/// Return an enumerable collection of <#=table.Name.Replace("tbl", "")#>
+		/// Return an enumerable collection of <#= table.Name #>
 		/// </summary>
-		IEnumerable<<#=table.Name.Replace("tbl", "")#>> Get();
+		IEnumerable<<#= table.Name #>> Get();
 		
 		
 		/// <summary>
-		/// Insert or update a list of <#=table.Name.Replace("tbl", "")#>
+		/// Insert or update a list of <#= table.Name #>
 		/// </summary>
-	    void Merge(IEnumerable<<#=table.Name.Replace("tbl", "")#>> list);
+	    void Merge(IEnumerable<<#= table.Name #>> list);
 		
 
 		/// <summary>
-		/// Insert or update an instance of <#=table.Name.Replace("tbl", "")#>
+		/// Insert or update an instance of <#= table.Name #>
 		/// </summary>
-		void Merge(<#=table.Name.Replace("tbl", "")#> item);
+		void Merge(<#= table.Name #> item);
 		
 
 		/// <summary>
-		/// Delete a list of <#=table.Name.Replace("tbl", "")#>
+		/// Delete a list of <#= table.Name #>
 		/// </summary>
-		void Delete(IEnumerable<<#=table.Name.Replace("tbl", "")#>> list);
+		void Delete(IEnumerable<<#= table.Name #>> list);
 		
 
 		/// <summary>
-		/// Delete an instance of <#=table.Name.Replace("tbl", "")#>
+		/// Delete an instance of <#= table.Name #>
 		/// </summary>
 		void Delete(long id);
 		

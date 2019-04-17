@@ -264,3 +264,4 @@ __pycache__/
 /DataLayerGenerator/Models
 /DataLayerGenerator/Repositories
 /DataLayerGenerator/ViewModels
+/DataLayerGenerator/Interfaces

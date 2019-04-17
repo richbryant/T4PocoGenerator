@@ -48,7 +48,7 @@ namespace <#= classNamespace #>
     /// Represents a <#= table.Name #>.
     /// NOTE: This class is generated from a T4 template.
     /// </summary>
-    public class <#= table.Name.Replace("tbl", "") #> 
+    public class <#= table.Name #> 
     {
 <# 
         // Keep count so we don't whitespace the last property/column
@@ -65,13 +65,9 @@ namespace <#= classNamespace #>
                 // Skip
                 continue;
             }
-            // Handle nullable columns by making the type nullable
-            if (col.Nullable && propertyType != "string")
-            {
-                propertyType += "?";
-            }
+            
 #>
-        public <#= propertyType #> <#= col.Name.Replace("fld", "") #> { get; set; }
+        public <#= propertyType #> <#= col.Name #> { get; set; }
 <#
             // Do we insert the space?
             if (i != columnCount)
@@ -87,7 +83,7 @@ namespace <#= classNamespace #>
 }      
 <#
         // Write new POCO class to its own file
-        SaveOutput(table.Name.Replace("tbl", "") + ".cs", destinationFolder);
+        SaveOutput(table.Name + ".cs", destinationFolder);
     } 
 #>
 <#+

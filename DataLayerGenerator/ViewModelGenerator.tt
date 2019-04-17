@@ -55,16 +55,15 @@ namespace <#= classNamespace #>
     /// </summary>
     public class <#= className #> : BindableBase
     {
-		private <#= tableName #> _data = new <#= tableName #>();
-
 		public <#= className #>()
 		{}
 
-		public <#= className #>(<#= tableName #> data)
+		public <#= className #>(<#= table.Name #> data)
 		{
-			_data = data;
+			Data = data;
 		}
 
+		public <#= table.Name #> Data { get; private set; } = new <#= table.Name #>();
 
 <# 
         // Keep count so we don't whitespace the last property/column
@@ -83,18 +82,14 @@ namespace <#= classNamespace #>
                 // Skip
                 continue;
             }
-            // Handle nullable columns by making the type nullable
-            if (col.Nullable && propertyType != "string")
-            {
-                propertyType += "?";
-            }
+            
 #>
 		public <#= propertyType #> <#= colName #> 
 		{ 
-			get => _data.<#= fldName #>;
+			get => Data.<#= col.Name #>;
 			set
 			{
-				_data.<#= fldName #> = value;
+				Data.<#= col.Name #> = value;
 				RaisePropertyChanged();
 			}
 		}
@@ -111,7 +106,7 @@ namespace <#= classNamespace #>
         }
 #>
 
-		public static <#= className #> New(<#= tableName #> data)
+		public static <#= className #> New(<#= table.Name #> data)
 		{
 			return new <#= className #>(data);
 		}

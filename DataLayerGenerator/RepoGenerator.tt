@@ -48,19 +48,19 @@ namespace <#= classNamespace #>
     public interface <#= "I" + table.Name.Replace("tbl", "") + "Data" #> 
     {
         [Sql("<#= "x_" + table.Name.Replace("tbl", "") + "_Get" #>")]
-        <#=table.Name.Replace("tbl", "")#> Get(long id);
+        <#= table.Name #> Get(long id);
 
 		[Sql("<#= "x_" + table.Name.Replace("tbl", "") + "_Get" #>")]
-        IEnumerable<<#=table.Name.Replace("tbl", "")#>> Get();
+        IEnumerable<<#= table.Name #>> Get();
 
 		[Sql("<#= "x_" + table.Name.Replace("tbl", "") + "_MergeBatch" #>")]
-        void Merge(IEnumerable<<#=table.Name.Replace("tbl", "")#>> list);
+        void Merge(IEnumerable<<#= table.Name #>> list);
 
 		[Sql("<#= "x_" + table.Name.Replace("tbl", "") + "_Merge" #>")]
-		void Merge(<#=table.Name.Replace("tbl", "")#> item);
+		void Merge(<#= table.Name #> item);
 
 		[Sql("<#= "x_" + table.Name.Replace("tbl", "") + "_DeleteBatch" #>")]
-        void Delete(IEnumerable<<#=table.Name.Replace("tbl", "")#>> list);
+        void Delete(IEnumerable<<#= table.Name #>> list);
 
 		[Sql("<#= "x_" + table.Name.Replace("tbl", "") + "_Delete" #>")]
 		void Delete(long id);
