@@ -55,6 +55,17 @@ namespace <#= classNamespace #>
     /// </summary>
     public class <#= className #> : BindableBase
     {
+		private <#= tableName #> _data = new <#= tableName #>();
+
+		public <#= className #>()
+		{}
+
+		public <#= className #>(<#= tableName #> data)
+		{
+			_data = data;
+		}
+
+
 <# 
         // Keep count so we don't whitespace the last property/column
         int columnCount = table.Columns.Count;
@@ -63,7 +74,7 @@ namespace <#= classNamespace #>
         foreach (Column col in table.Columns)
         {
 			string colName = col.Name.Replace("fld", "");
-			string fldName = "_" + Char.ToLowerInvariant(colName[0]) + colName.Substring(1);
+			string fldName = colName;
             i++;
             string propertyType = GetNetDataType(col.DataType.Name);
             // If we can't map it, skip it
@@ -78,12 +89,14 @@ namespace <#= classNamespace #>
                 propertyType += "?";
             }
 #>
-		private <#= propertyType #> <#= fldName #>;
-
-        public <#= propertyType #> <#= colName #> 
+		public <#= propertyType #> <#= colName #> 
 		{ 
-			get => <#= fldName #>;
-			set => SetProperty(ref <#= fldName #>, value);
+			get => _data.<#= fldName #>;
+			set
+			{
+				_data.<#= fldName #> = value;
+				RaisePropertyChanged();
+			}
 		}
 
 <#
@@ -100,15 +113,7 @@ namespace <#= classNamespace #>
 
 		public static <#= className #> New(<#= tableName #> data)
 		{
-			var item = new <#= className #>();
-<#		foreach(Column col in table.Columns)
-		{
-			string colName = col.Name.Replace("fld", "");
-#>
-			item.<#= colName #> = data.<#= colName #>;
-<#
-		}
-#>			return item;
+			return new <#= className #>(data);
 		}
     }
 }      
