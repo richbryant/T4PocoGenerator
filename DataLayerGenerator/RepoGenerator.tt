@@ -12,8 +12,8 @@
 <#@ import namespace="Microsoft.SqlServer.Management.Smo" #>
 <#
     //**********************************************************************************************
-    // This T4 generates POCOs from the specified DB and saves them to the specified folder which 
-    // is relative to the template's location. One file per table/POCO.
+    // This T4 generates Insight data interfaces from the specified DB and saves them to the specified folder which 
+    // is relative to the template's location. One file per table.
     //**********************************************************************************************
     //****************************
     // DEFINE YOUR VARIABLES HERE
@@ -67,7 +67,7 @@ namespace <#= classNamespace #>
     }
 }      
 <#
-        // Write new POCO class to its own file
+        // Write new data interface class to its own file
         SaveOutput("I" + table.Name.Replace("tbl", "") + "Data" + ".cs", destinationFolder);
     } 
 #>

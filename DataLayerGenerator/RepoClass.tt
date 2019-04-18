@@ -42,7 +42,6 @@
 #>
 using System;
 using System.Collections.Generic;
-using Insight.Database;
 using Serilog;
 using Practicon.Datalayer.Models;
 using Practicon.Datalayer.Insight;
