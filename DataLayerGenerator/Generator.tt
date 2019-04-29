@@ -5,7 +5,10 @@
 <#@ assembly name="Microsoft.SqlServer.Smo" #>
 <#@ assembly name="Microsoft.SqlServer.ConnectionInfo" #>
 <#@ assembly name="Microsoft.SqlServer.Management.Sdk.Sfc" #>
+<#@ assembly name="$(ProjectDir)\\bin\\Debug\\Extensions.dll"#>
+<#@ import namespace="Extensions" #>
 <#@ import namespace="System" #>
+<#@ import namespace="System.Collections.Generic" #>
 <#@ import namespace="System.IO" #>
 <#@ import namespace="System.Linq" #>
 <#@ import namespace="System.Text" #>
@@ -40,6 +43,7 @@
         {
             continue;
         }
+		var tableName = table.Name.Clean();
 #>
 using System;
 namespace <#= classNamespace #>
@@ -48,7 +52,7 @@ namespace <#= classNamespace #>
     /// Represents a <#= table.Name #>.
     /// NOTE: This class is generated from a T4 template.
     /// </summary>
-    public class <#= table.Name #> 
+    public class <#= tableName #> 
     {
 <# 
         // Keep count so we don't whitespace the last property/column
@@ -58,6 +62,7 @@ namespace <#= classNamespace #>
         foreach (Column col in table.Columns)
         {
             i++;
+			var columnName = col.Name.Clean();
             string propertyType = GetNetDataType(col.DataType.Name);
             // If we can't map it, skip it
             if (string.IsNullOrWhiteSpace(propertyType))
@@ -67,7 +72,7 @@ namespace <#= classNamespace #>
             }
             
 #>
-        public <#= propertyType #> <#= col.Name #> { get; set; }
+        public <#= propertyType #> <#= columnName #> { get; set; }
 <#
             // Do we insert the space?
             if (i != columnCount)
@@ -83,11 +88,12 @@ namespace <#= classNamespace #>
 }      
 <#
         // Write new POCO class to its own file
-        SaveOutput(table.Name + ".cs", destinationFolder);
+        SaveOutput(tableName + ".cs", destinationFolder);
     } 
 #>
 <#+
-    public static string GetNetDataType(string sqlDataTypeName)
+
+	    public static string GetNetDataType(string sqlDataTypeName)
     {
         switch (sqlDataTypeName.ToLower())
         {
@@ -129,6 +135,8 @@ namespace <#= classNamespace #>
             default:
                 return null;
         }
+
+
     }
     void SaveOutput(string outputFileName, string destinationFolder)
     {

@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using Extensions;
 using Microsoft.SqlServer.Management.Smo;
 
 namespace DataLayerGenerator.GenerateSprocs
@@ -92,7 +93,7 @@ namespace DataLayerGenerator.GenerateSprocs
         
         private static void CreateMergeSproc(Table table, Database db, string prefix)
         {
-            var tableType = Tidy.Clean(table.Name);
+            var tableType = table.Name.Clean();
             var type = db.UserDefinedTableTypes[tableType];
 
             var columnsList = new List<string>();
@@ -105,17 +106,17 @@ namespace DataLayerGenerator.GenerateSprocs
             }
 
             var sproc = new StringBuilder("DECLARE @list " + tableType + "; \n");
-            sproc.Append("INSERT INTO @list ([" + Tidy.Clean(columnsList[0]) + "] \n");
+            sproc.Append("INSERT INTO @list ([" + columnsList[0].Clean() + "] \n");
             for (var i = 1; i < columnsList.Count; i++)
             {
-                sproc.Append("\t\t\t,[" + Tidy.Clean(columnsList[i]) + "]");
+                sproc.Append("\t\t\t,[" + columnsList[i].Clean() + "]");
                 sproc.Append(i < columnsList.Count - 1 ? " \n" : ") \n");
             }
 
-            sproc.Append("\t\tVALUES(@" + Tidy.Clean(columnsList[0] + " \n"));
+            sproc.Append("\t\tVALUES(@" + columnsList[0].Clean() + " \n");
             for (var i = 1; i < columnsList.Count; i++)
             {
-                sproc.Append("\t\t\t,@" + Tidy.Clean(columnsList[i]) + "");
+                sproc.Append("\t\t\t,@" + columnsList[i].Clean() + "");
                 sproc.Append(i < columnsList.Count - 1 ? " \n" : "); \n");
             }
 
@@ -128,7 +129,7 @@ namespace DataLayerGenerator.GenerateSprocs
             sproc.Append("\t\t\t[" + columnsList[0] + "] = source.[" + type.Columns[0].Name + "] \n");
             for (var i = 1; i < columnsList.Count; i++)
             {
-                sproc.Append("\t\t\t,[" + columnsList[i] + "] = source.[" + Tidy.Clean(columnsList[i]) + "] \n");
+                sproc.Append("\t\t\t,[" + columnsList[i] + "] = source.[" + columnsList[i].Clean() + "] \n");
             }
 
             sproc.Append("\t WHEN NOT MATCHED THEN \n");
@@ -139,10 +140,10 @@ namespace DataLayerGenerator.GenerateSprocs
                 sproc.Append(i < columnsList.Count - 1 ? " \n" : ") \n");
             }
 
-            sproc.Append("\t\tVALUES(source.[" + Tidy.Clean(columnsList[0] + "] \n"));
+            sproc.Append("\t\tVALUES(source.[" + columnsList[0].Clean() + "] \n");
             for (var i = 1; i < columnsList.Count; i++)
             {
-                sproc.Append("\t\t\t,source.[" + Tidy.Clean(columnsList[i]) + "]");
+                sproc.Append("\t\t\t,source.[" + columnsList[i].Clean() + "]");
                 sproc.Append(i < columnsList.Count - 1 ? " \n" : "); \n");
             }
 
@@ -155,7 +156,7 @@ namespace DataLayerGenerator.GenerateSprocs
 
             foreach (Column column in table.Columns)
             {
-                var p = new StoredProcedureParameter(sp, "@" + Tidy.Clean(column.Name), column.DataType);
+                var p = new StoredProcedureParameter(sp, "@" + column.Name.Clean(), column.DataType);
                 sp.Parameters.Add(p);
             }
 
@@ -172,7 +173,7 @@ namespace DataLayerGenerator.GenerateSprocs
 
         private static void CreateMergeBatchSproc(Table table, Database db, string prefix)
         {
-            var tableType = Tidy.Clean(table.Name);
+            var tableType = table.Name.Clean();
             var type = db.UserDefinedTableTypes[tableType];
 
             var columnsList = new List<string>();
@@ -192,7 +193,7 @@ namespace DataLayerGenerator.GenerateSprocs
             sproc.Append("\t\t\t[" + columnsList[0] + "] = source.[" + type.Columns[0].Name + "] \n");
             for (var i = 1; i < columnsList.Count; i++)
             {
-                sproc.Append("\t\t\t,[" + columnsList[i] + "] = source.[" + Tidy.Clean(columnsList[i]) + "] \n");
+                sproc.Append("\t\t\t,[" + columnsList[i] + "] = source.[" + columnsList[i].Clean() + "] \n");
             }
 
             sproc.Append("\t WHEN NOT MATCHED THEN \n");
@@ -203,10 +204,10 @@ namespace DataLayerGenerator.GenerateSprocs
                 sproc.Append(i < columnsList.Count - 1 ? " \n" : ") \n");
             }
 
-            sproc.Append("\t\tVALUES(source.[" + Tidy.Clean(columnsList[0] + "] \n"));
+            sproc.Append("\t\tVALUES(source.[" + columnsList[0].Clean() + "] \n");
             for (var i = 1; i < columnsList.Count; i++)
             {
-                sproc.Append("\t\t\t,source.[" + Tidy.Clean(columnsList[i]) + "]");
+                sproc.Append("\t\t\t,source.[" + columnsList[i].Clean() + "]");
                 sproc.Append(i < columnsList.Count - 1 ? " \n" : "); \n");
             }
 
@@ -247,7 +248,7 @@ namespace DataLayerGenerator.GenerateSprocs
 
         private static void CreateDeleteBatchSproc(Table table, Database db, string prefix)
         {
-            var tableType = Tidy.Clean(table.Name);
+            var tableType = table.Name.Clean();
             
             var sproc = new StringBuilder("DELETE FROM " + table.Name + "\n");
             sproc.Append("WHERE fldIndex IN (SELECT [Index] FROM @list)");

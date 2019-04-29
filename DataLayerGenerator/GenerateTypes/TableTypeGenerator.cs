@@ -1,4 +1,5 @@
-﻿using Microsoft.SqlServer.Management.Smo;
+﻿using Extensions;
+using Microsoft.SqlServer.Management.Smo;
 
 namespace DataLayerGenerator.GenerateTypes
 {
@@ -21,7 +22,7 @@ namespace DataLayerGenerator.GenerateTypes
                     continue;
                 }
 
-                var fixedName = Tidy.Clean(table.Name);
+                var fixedName = table.Name.Clean();
                 UserDefinedTableType type;
 
                 if (db.UserDefinedTableTypes.Contains(fixedName))
@@ -33,7 +34,7 @@ namespace DataLayerGenerator.GenerateTypes
                 type = new UserDefinedTableType(db, fixedName);
                 foreach (Column column in table.Columns)
                 {
-                    var fixedColumnName = Tidy.Clean(column.Name);
+                    var fixedColumnName = column.Name.Clean();
                     var c = new Column(type, fixedColumnName)
                     {
                         DataType = column.DataType
