@@ -7,17 +7,18 @@ namespace DataLayerGenerator.GenerateTypes
     {
         public static void GenerateTypes()
         {
-            var server = new Server("C877");
+            var server = new Server(@"VIRTUALHOST\SQLEXPRESS");
             server.ConnectionContext.LoginSecure = true;
             server.ConnectionContext.Connect();
 
             var dbName =   "proTrace_Jupiter_blank";
             var db = server.Databases[dbName];
+            const string schema = "Cip";
 
             foreach (Table table in db.Tables)
             {
                 
-                if (table.Name.StartsWith("sys"))
+                if (table.Name.StartsWith("sys") || table.Schema != schema)
                 {
                     continue;
                 }
@@ -41,6 +42,8 @@ namespace DataLayerGenerator.GenerateTypes
                     };
                     type.Columns.Add(c);
                 }
+
+                type.Schema = schema;
                 type.Create();
             }
         }

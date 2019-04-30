@@ -14,26 +14,32 @@ namespace DataLayerGenerator.GenerateSprocs
         /// </summary>
         public static void GenerateProcedures()
         {
-            var server = new Server("C877");
+            var server = new Server(@"VIRTUALHOST\SQLEXPRESS");
             server.ConnectionContext.LoginSecure = true;
             server.ConnectionContext.Connect();
 
             const string dbName = "proTrace_Jupiter_blank";
             var db = server.Databases[dbName];
 
-            const string prefix = "x_";
+            const string prefix = "";
+
+            const string schema = "Cip";
             
 
             var sprocNames = new List<string>();
             foreach (StoredProcedure sp in db.StoredProcedures)
             {
-                sprocNames.Add(sp.Name);
+                if (sp.Schema == schema)
+                {
+                    sprocNames.Add(sp.Name);
+                }
             }
             
             foreach (Table table in db.Tables)
             {
+                if(table.Schema != schema) continue;
                 if (table.Name.StartsWith("sys") || table.Name.StartsWith("tblMimicDataLogged_") 
-                                                 || table.Name.StartsWith("tblMimicSnapshotdata_") || table.Name.StartsWith("tblMimicSnapshots_"))
+                                                 || table.Name.StartsWith("tblMimicSnapshotdata_") || table.Name.StartsWith("tblMimicSnapshots_") || table.Schema != schema)
                 {
                     continue;
                 }
@@ -55,11 +61,11 @@ namespace DataLayerGenerator.GenerateSprocs
 
                 try
                 {
-                    CreateGetSproc(table, db, prefix, indexDataType);
-                    CreateMergeSproc(table, db, prefix);
-                    CreateMergeBatchSproc(table, db, prefix);
-                    CreateDeleteSproc(table, db, prefix, indexDataType);
-                    CreateDeleteBatchSproc(table, db, prefix);
+                    CreateGetSproc(table, db, prefix, indexDataType, schema);
+                    CreateMergeSproc(table, db, prefix, schema);
+                    CreateMergeBatchSproc(table, db, prefix, schema);
+                    CreateDeleteSproc(table, db, prefix, indexDataType, schema);
+                    CreateDeleteBatchSproc(table, db, prefix, schema);
                 }
                 catch (Exception e)
                 {
@@ -68,79 +74,101 @@ namespace DataLayerGenerator.GenerateSprocs
             }
         }
 
-        private static void CreateGetSproc(Table table, Database db, string prefix, DataType indexType)
+        private static void CreateGetSproc(Table table, Database db, string prefix, DataType indexType, string schema = "dbo")
         {
             var sproc = new StringBuilder();
-            sproc.Append("SELECT " + table.Columns[0].Name + "\n");
+            sproc.Append("SELECT [" + table.Columns[0].Name + "]\n");
             for (var i = 1; i < table.Columns.Count; i++)
             {
-                sproc.Append("\t," + table.Columns[i].Name + "\n");
+                sproc.Append("\t,[" + table.Columns[i].Name + "]\n");
             }
 
-            sproc.Append("FROM " + table.Name + " \n");
-            sproc.Append("WHERE (@id is NULL OR (fldIndex = @id))\n");
+            var pk = "";
+            foreach (Column column in table.Columns)
+            {
+                if (!column.InPrimaryKey) continue;
+                if (string.IsNullOrEmpty(pk))
+                    pk = column.Name;
+            }
+
+
+            sproc.Append("FROM " + schema + "." + table.Name + " \n");
+            sproc.Append("WHERE (@id is NULL OR (Id = @id))\n");
 
             var sp = new StoredProcedure(db, prefix + table.Name + "Get")
             {
                 TextMode = false, AnsiNullsStatus = false, QuotedIdentifierStatus = false
             };
             var param = new StoredProcedureParameter(sp, "@id", indexType) {DefaultValue = "NULL"};
+            sp.Schema = schema;
             sp.Parameters.Add(param);
             sp.TextBody = sproc.ToString();
             sp.Create();
         }
 
         
-        private static void CreateMergeSproc(Table table, Database db, string prefix)
+        private static void CreateMergeSproc(Table table, Database db, string prefix, string schema = "dbo")
         {
             var tableType = table.Name.Clean();
-            var type = db.UserDefinedTableTypes[tableType];
+            var types = new List<UserDefinedTableType>();
+            foreach (UserDefinedTableType item in db.UserDefinedTableTypes)
+            {
+                types.Add(item);
+            }
+
+            var type = types.First(x => x.Name == tableType && x.Schema == schema);
 
             var columnsList = new List<string>();
+            var pk = "";
             foreach (Column column in table.Columns)
             {
-                if (!column.Identity)
+                if (!column.InPrimaryKey)
                 {
                     columnsList.Add(column.Name);
                 }
+                else
+                {
+                    if(string.IsNullOrEmpty(pk))
+                        pk = column.Name;
+                }
             }
 
-            var sproc = new StringBuilder("DECLARE @list " + tableType + "; \n");
-            sproc.Append("INSERT INTO @list ([" + columnsList[0].Clean() + "] \n");
-            for (var i = 1; i < columnsList.Count; i++)
+            var sproc = new StringBuilder("DECLARE @list " + schema + "." + tableType + "; \n");
+            sproc.Append("INSERT INTO @list ([" + type.Columns[0].Name + "] \n");
+            for (var i = 1; i < type.Columns.Count; i++)
             {
-                sproc.Append("\t\t\t,[" + columnsList[i].Clean() + "]");
-                sproc.Append(i < columnsList.Count - 1 ? " \n" : ") \n");
+                sproc.Append("\t\t\t,[" + type.Columns[i].Name + "]");
+                sproc.Append(i < type.Columns.Count - 1 ? " \n" : ") \n");
             }
 
-            sproc.Append("\t\tVALUES(@" + columnsList[0].Clean() + " \n");
-            for (var i = 1; i < columnsList.Count; i++)
+            sproc.Append("\t\tVALUES(@" + type.Columns[0].Name + " \n");
+            for (var i = 1; i < type.Columns.Count; i++)
             {
-                sproc.Append("\t\t\t,@" + columnsList[i].Clean() + "");
-                sproc.Append(i < columnsList.Count - 1 ? " \n" : "); \n");
+                sproc.Append("\t\t\t,@" + type.Columns[i].Name + "");
+                sproc.Append(i < type.Columns.Count - 1 ? " \n" : "); \n");
             }
 
             sproc.Append("\n\n");
-            sproc.Append("MERGE " + table.Name + " AS target \n");
+            sproc.Append("MERGE " + schema + "." + table.Name + " AS target \n");
             sproc.Append("USING @list as source \n");
-            sproc.Append("ON target.fldIndex = source.[Index] \n");
+            sproc.Append("ON target.[" + pk + "] = source.[" + pk + "] \n");
             sproc.Append("\t WHEN MATCHED THEN \n");
             sproc.Append("\t\t UPDATE SET \n");
-            sproc.Append("\t\t\t[" + columnsList[0] + "] = source.[" + type.Columns[0].Name + "] \n");
+            sproc.Append("\t\t\t[" + columnsList[0] + "] = source.[" + columnsList[0] + "] \n");
             for (var i = 1; i < columnsList.Count; i++)
             {
-                sproc.Append("\t\t\t,[" + columnsList[i] + "] = source.[" + columnsList[i].Clean() + "] \n");
+                sproc.Append("\t\t\t,[" + columnsList[i] + "] = source.[" + columnsList[i] + "] \n");
             }
 
             sproc.Append("\t WHEN NOT MATCHED THEN \n");
-            sproc.Append("\t\tINSERT(" + columnsList[0] + " \n");
+            sproc.Append("\t\tINSERT([" + columnsList[0] + "] \n");
             for (var i = 1; i < columnsList.Count; i++)
             {
                 sproc.Append("\t\t\t,[" + columnsList[i] + "]");
                 sproc.Append(i < columnsList.Count - 1 ? " \n" : ") \n");
             }
 
-            sproc.Append("\t\tVALUES(source.[" + columnsList[0].Clean() + "] \n");
+            sproc.Append("\t\tVALUES(source.[" + columnsList[0] + "] \n");
             for (var i = 1; i < columnsList.Count; i++)
             {
                 sproc.Append("\t\t\t,source.[" + columnsList[i].Clean() + "]");
@@ -156,10 +184,11 @@ namespace DataLayerGenerator.GenerateSprocs
 
             foreach (Column column in table.Columns)
             {
-                var p = new StoredProcedureParameter(sp, "@" + column.Name.Clean(), column.DataType);
+                var p = new StoredProcedureParameter(sp, "@" + column.Name, column.DataType);
                 sp.Parameters.Add(p);
             }
 
+            sp.Schema = schema;
             sp.TextBody = sproc.ToString();
             try
             {
@@ -171,43 +200,56 @@ namespace DataLayerGenerator.GenerateSprocs
             }
         }
 
-        private static void CreateMergeBatchSproc(Table table, Database db, string prefix)
+        private static void CreateMergeBatchSproc(Table table, Database db, string prefix, string schema = "dbo")
         {
             var tableType = table.Name.Clean();
-            var type = db.UserDefinedTableTypes[tableType];
 
+            var types = new List<UserDefinedTableType>();
+            foreach (UserDefinedTableType item in db.UserDefinedTableTypes)
+            {
+                types.Add(item);
+            }
+
+            var type = types.First(x => x.Name == tableType && x.Schema == schema);
+            
             var columnsList = new List<string>();
+            var pk = "";
             foreach (Column column in table.Columns)
             {
-                if (!column.Identity)
+                if (!column.InPrimaryKey)
                 {
                     columnsList.Add(column.Name);
                 }
+                else
+                {
+                    if (string.IsNullOrEmpty(pk))
+                        pk = column.Name;
+                }
             }
 
-            var sproc = new StringBuilder("MERGE " + table.Name + " AS target \n");
+            var sproc = new StringBuilder("MERGE " + schema + ".[" + table.Name + "] AS target \n");
             sproc.Append("USING @list as source \n");
-            sproc.Append("ON target.fldIndex = source.[Index] \n");
+            sproc.Append("ON target.[" + pk + "] = source.[" + pk + "] \n");
             sproc.Append("\t WHEN MATCHED THEN \n");
             sproc.Append("\t\t UPDATE SET \n");
             sproc.Append("\t\t\t[" + columnsList[0] + "] = source.[" + type.Columns[0].Name + "] \n");
             for (var i = 1; i < columnsList.Count; i++)
             {
-                sproc.Append("\t\t\t,[" + columnsList[i] + "] = source.[" + columnsList[i].Clean() + "] \n");
+                sproc.Append("\t\t\t,[" + columnsList[i] + "] = source.[" + columnsList[i] + "] \n");
             }
 
             sproc.Append("\t WHEN NOT MATCHED THEN \n");
-            sproc.Append("\t\tINSERT(" + columnsList[0] + " \n");
+            sproc.Append("\t\tINSERT([" + columnsList[0] + "] \n");
             for (var i = 1; i < columnsList.Count; i++)
             {
                 sproc.Append("\t\t\t,[" + columnsList[i] + "]");
                 sproc.Append(i < columnsList.Count - 1 ? " \n" : ") \n");
             }
 
-            sproc.Append("\t\tVALUES(source.[" + columnsList[0].Clean() + "] \n");
+            sproc.Append("\t\tVALUES(source.[" + columnsList[0] + "] \n");
             for (var i = 1; i < columnsList.Count; i++)
             {
-                sproc.Append("\t\t\t,source.[" + columnsList[i].Clean() + "]");
+                sproc.Append("\t\t\t,source.[" + columnsList[i] + "]");
                 sproc.Append(i < columnsList.Count - 1 ? " \n" : "); \n");
             }
 
@@ -217,20 +259,29 @@ namespace DataLayerGenerator.GenerateSprocs
                 AnsiNullsStatus = false,
                 QuotedIdentifierStatus = false
             };
-            var param = new StoredProcedureParameter(sp, "@list", new DataType(db.UserDefinedTableTypes[tableType]))
+            var param = new StoredProcedureParameter(sp, "@list", new DataType(type))
             {
                 IsReadOnly = true
             };
             sp.Parameters.Add(param);
-
+            sp.Schema = schema;
             sp.TextBody = sproc.ToString();
             sp.Create();
         }
 
-        private static void CreateDeleteSproc(Table table, Database db, string prefix, DataType indexType)
+        private static void CreateDeleteSproc(Table table, Database db, string prefix, DataType indexType, string schema = "dbo")
         {
-            var sproc = new StringBuilder("DELETE FROM " + table.Name + "\n");
-            sproc.Append("WHERE fldIndex = @id");
+            var pk = "";
+            foreach (Column column in table.Columns)
+            {
+                if (!column.InPrimaryKey) continue;
+                if (!string.IsNullOrEmpty(pk)) continue;
+                pk = column.Name;
+                break;
+
+            }
+            var sproc = new StringBuilder("DELETE FROM " + schema + ".[" + table.Name + "]\n");
+            sproc.Append("WHERE [" + pk + "] = @id");
 
             var sp = new StoredProcedure(db, prefix + table.Name + "Delete")
             {
@@ -241,17 +292,35 @@ namespace DataLayerGenerator.GenerateSprocs
 
             var p = new StoredProcedureParameter(sp, "@id", indexType);
             sp.Parameters.Add(p);
-
+            sp.Schema = schema;
             sp.TextBody = sproc.ToString();
             sp.Create();
         }
 
-        private static void CreateDeleteBatchSproc(Table table, Database db, string prefix)
+        private static void CreateDeleteBatchSproc(Table table, Database db, string prefix, string schema = "dbo")
         {
             var tableType = table.Name.Clean();
-            
-            var sproc = new StringBuilder("DELETE FROM " + table.Name + "\n");
-            sproc.Append("WHERE fldIndex IN (SELECT [Index] FROM @list)");
+
+            var pk = "";
+            foreach (Column column in table.Columns)
+            {
+                if (!column.InPrimaryKey) continue;
+                if (!string.IsNullOrEmpty(pk)) continue;
+                pk = column.Name;
+                break;
+
+            }
+
+            var types = new List<UserDefinedTableType>();
+            foreach (UserDefinedTableType item in db.UserDefinedTableTypes)
+            {
+                types.Add(item);
+            }
+
+            var type = types.First(x => x.Name == tableType && x.Schema == schema);
+
+            var sproc = new StringBuilder("DELETE FROM " + schema + ".[" + table.Name + "]\n");
+            sproc.Append("WHERE [" + pk + "] IN (SELECT [" + pk + "] FROM @list)");
 
             var sp = new StoredProcedure(db, prefix + table.Name + "DeleteBatch")
             {
@@ -259,12 +328,12 @@ namespace DataLayerGenerator.GenerateSprocs
                 AnsiNullsStatus = false,
                 QuotedIdentifierStatus = false
             };
-            var param = new StoredProcedureParameter(sp, "@list", new DataType(db.UserDefinedTableTypes[tableType]))
+            var param = new StoredProcedureParameter(sp, "@list", new DataType(type))
             {
                 IsReadOnly = true
             };
             sp.Parameters.Add(param);
-
+            sp.Schema = schema;
             sp.TextBody = sproc.ToString();
             sp.Create();
         }
