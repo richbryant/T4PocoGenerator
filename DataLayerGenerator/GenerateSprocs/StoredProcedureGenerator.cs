@@ -34,17 +34,24 @@ namespace DataLayerGenerator.GenerateSprocs
                     sprocNames.Add(sp.Name);
                 }
             }
-            
+
+            var tables = new List<Table>();
             foreach (Table table in db.Tables)
             {
-                if(table.Schema != schema) continue;
-                if (table.Name.StartsWith("sys") || table.Name.StartsWith("tblMimicDataLogged_") 
+                if (table.Schema != schema) continue;
+                if (table.Name.StartsWith("sys") || table.Name.StartsWith("tblMimicDataLogged_")
                                                  || table.Name.StartsWith("tblMimicSnapshotdata_") || table.Name.StartsWith("tblMimicSnapshots_") || table.Schema != schema)
                 {
                     continue;
                 }
+                tables.Add(table);
+            }
 
-                DataType indexDataType = DataType.BigInt;
+            foreach (var table in tables)
+            {
+                
+
+                var indexDataType = DataType.BigInt;
                 foreach (Column column in table.Columns)
                 {
                     if (column.InPrimaryKey)
@@ -133,47 +140,7 @@ namespace DataLayerGenerator.GenerateSprocs
                 }
             }
 
-            var sproc = new StringBuilder("DECLARE @list " + schema + "." + tableType + "; \n");
-            sproc.Append("INSERT INTO @list ([" + type.Columns[0].Name + "] \n");
-            for (var i = 1; i < type.Columns.Count; i++)
-            {
-                sproc.Append("\t\t\t,[" + type.Columns[i].Name + "]");
-                sproc.Append(i < type.Columns.Count - 1 ? " \n" : ") \n");
-            }
-
-            sproc.Append("\t\tVALUES(@" + type.Columns[0].Name + " \n");
-            for (var i = 1; i < type.Columns.Count; i++)
-            {
-                sproc.Append("\t\t\t,@" + type.Columns[i].Name + "");
-                sproc.Append(i < type.Columns.Count - 1 ? " \n" : "); \n");
-            }
-
-            sproc.Append("\n\n");
-            sproc.Append("MERGE " + schema + "." + table.Name + " AS target \n");
-            sproc.Append("USING @list as source \n");
-            sproc.Append("ON target.[" + pk + "] = source.[" + pk + "] \n");
-            sproc.Append("\t WHEN MATCHED THEN \n");
-            sproc.Append("\t\t UPDATE SET \n");
-            sproc.Append("\t\t\t[" + columnsList[0] + "] = source.[" + columnsList[0] + "] \n");
-            for (var i = 1; i < columnsList.Count; i++)
-            {
-                sproc.Append("\t\t\t,[" + columnsList[i] + "] = source.[" + columnsList[i] + "] \n");
-            }
-
-            sproc.Append("\t WHEN NOT MATCHED THEN \n");
-            sproc.Append("\t\tINSERT([" + columnsList[0] + "] \n");
-            for (var i = 1; i < columnsList.Count; i++)
-            {
-                sproc.Append("\t\t\t,[" + columnsList[i] + "]");
-                sproc.Append(i < columnsList.Count - 1 ? " \n" : ") \n");
-            }
-
-            sproc.Append("\t\tVALUES(source.[" + columnsList[0] + "] \n");
-            for (var i = 1; i < columnsList.Count; i++)
-            {
-                sproc.Append("\t\t\t,source.[" + columnsList[i].Clean() + "]");
-                sproc.Append(i < columnsList.Count - 1 ? " \n" : "); \n");
-            }
+            var sproc = MergeBody(table, schema, tableType, type, pk, columnsList);
 
             var sp = new StoredProcedure(db, prefix + table.Name + "Merge")
             {
@@ -199,6 +166,8 @@ namespace DataLayerGenerator.GenerateSprocs
                 Console.Write(ex.Message);
             }
         }
+
+        
 
         private static void CreateMergeBatchSproc(Table table, Database db, string prefix, string schema = "dbo")
         {
@@ -227,31 +196,7 @@ namespace DataLayerGenerator.GenerateSprocs
                 }
             }
 
-            var sproc = new StringBuilder("MERGE " + schema + ".[" + table.Name + "] AS target \n");
-            sproc.Append("USING @list as source \n");
-            sproc.Append("ON target.[" + pk + "] = source.[" + pk + "] \n");
-            sproc.Append("\t WHEN MATCHED THEN \n");
-            sproc.Append("\t\t UPDATE SET \n");
-            sproc.Append("\t\t\t[" + columnsList[0] + "] = source.[" + type.Columns[0].Name + "] \n");
-            for (var i = 1; i < columnsList.Count; i++)
-            {
-                sproc.Append("\t\t\t,[" + columnsList[i] + "] = source.[" + columnsList[i] + "] \n");
-            }
-
-            sproc.Append("\t WHEN NOT MATCHED THEN \n");
-            sproc.Append("\t\tINSERT([" + columnsList[0] + "] \n");
-            for (var i = 1; i < columnsList.Count; i++)
-            {
-                sproc.Append("\t\t\t,[" + columnsList[i] + "]");
-                sproc.Append(i < columnsList.Count - 1 ? " \n" : ") \n");
-            }
-
-            sproc.Append("\t\tVALUES(source.[" + columnsList[0] + "] \n");
-            for (var i = 1; i < columnsList.Count; i++)
-            {
-                sproc.Append("\t\t\t,source.[" + columnsList[i] + "]");
-                sproc.Append(i < columnsList.Count - 1 ? " \n" : "); \n");
-            }
+            var sproc = MergeBatchBody(table, schema, pk, columnsList, type);
 
             var sp = new StoredProcedure(db, prefix + table.Name + "MergeBatch")
             {
@@ -268,6 +213,8 @@ namespace DataLayerGenerator.GenerateSprocs
             sp.TextBody = sproc.ToString();
             sp.Create();
         }
+
+        
 
         private static void CreateDeleteSproc(Table table, Database db, string prefix, DataType indexType, string schema = "dbo")
         {
@@ -336,6 +283,63 @@ namespace DataLayerGenerator.GenerateSprocs
             sp.Schema = schema;
             sp.TextBody = sproc.ToString();
             sp.Create();
+        }
+
+        private static StringBuilder MergeBody(NamedSmoObject table, string schema, string tableType, TableViewTableTypeBase type,
+            string pk, IReadOnlyList<string> columnsList)
+        {
+            var sproc = new StringBuilder("DECLARE @list " + schema + "." + tableType + "; \n");
+            sproc.Append("INSERT INTO @list ([" + type.Columns[0].Name + "] \n");
+            for (var i = 1; i < type.Columns.Count; i++)
+            {
+                sproc.Append("\t\t\t,[" + type.Columns[i].Name + "]");
+                sproc.Append(i < type.Columns.Count - 1 ? " \n" : ") \n");
+            }
+
+            sproc.Append("\t\tVALUES(@" + type.Columns[0].Name + " \n");
+            for (var i = 1; i < type.Columns.Count; i++)
+            {
+                sproc.Append("\t\t\t,@" + type.Columns[i].Name + "");
+                sproc.Append(i < type.Columns.Count - 1 ? " \n" : "); \n");
+            }
+
+            sproc.Append("\n\n");
+
+            sproc.Append(MergeBatchBody(table, schema, pk, columnsList, type));
+
+            return sproc;
+        }
+
+        private static StringBuilder MergeBatchBody(NamedSmoObject table, string schema, string pk, IReadOnlyList<string> columnsList,
+            TableViewTableTypeBase type)
+        {
+            var sproc = new StringBuilder("MERGE " + schema + ".[" + table.Name + "] AS target \n");
+            sproc.Append("USING @list as source \n");
+            sproc.Append("ON target.[" + pk + "] = source.[" + pk + "] \n");
+            sproc.Append("\t WHEN MATCHED THEN \n");
+            sproc.Append("\t\t UPDATE SET \n");
+            sproc.Append("\t\t\t[" + columnsList[0] + "] = source.[" + type.Columns[0].Name + "] \n");
+            for (var i = 1; i < columnsList.Count; i++)
+            {
+                sproc.Append("\t\t\t,[" + columnsList[i] + "] = source.[" + columnsList[i] + "] \n");
+            }
+
+            sproc.Append("\t WHEN NOT MATCHED THEN \n");
+            sproc.Append("\t\tINSERT([" + columnsList[0] + "] \n");
+            for (var i = 1; i < columnsList.Count; i++)
+            {
+                sproc.Append("\t\t\t,[" + columnsList[i] + "]");
+                sproc.Append(i < columnsList.Count - 1 ? " \n" : ") \n");
+            }
+
+            sproc.Append("\t\tVALUES(source.[" + columnsList[0] + "] \n");
+            for (var i = 1; i < columnsList.Count; i++)
+            {
+                sproc.Append("\t\t\t,source.[" + columnsList[i] + "]");
+                sproc.Append(i < columnsList.Count - 1 ? " \n" : "); \n");
+            }
+
+            return sproc;
         }
     }
 }
