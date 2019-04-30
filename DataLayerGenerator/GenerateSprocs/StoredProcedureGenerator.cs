@@ -112,7 +112,6 @@ namespace DataLayerGenerator.GenerateSprocs
             sp.TextBody = sproc.ToString();
             sp.Create();
         }
-
         
         private static void CreateMergeSproc(Table table, Database db, string prefix, string schema = "dbo")
         {
@@ -167,8 +166,6 @@ namespace DataLayerGenerator.GenerateSprocs
             }
         }
 
-        
-
         private static void CreateMergeBatchSproc(Table table, Database db, string prefix, string schema = "dbo")
         {
             var tableType = table.Name.Clean();
@@ -213,8 +210,6 @@ namespace DataLayerGenerator.GenerateSprocs
             sp.TextBody = sproc.ToString();
             sp.Create();
         }
-
-        
 
         private static void CreateDeleteSproc(Table table, Database db, string prefix, DataType indexType, string schema = "dbo")
         {
