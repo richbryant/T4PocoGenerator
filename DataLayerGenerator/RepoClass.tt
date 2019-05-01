@@ -5,6 +5,8 @@
 <#@ assembly name="Microsoft.SqlServer.Smo" #>
 <#@ assembly name="Microsoft.SqlServer.ConnectionInfo" #>
 <#@ assembly name="Microsoft.SqlServer.Management.Sdk.Sfc" #>
+<#@ assembly name="$(ProjectDir)\\bin\\Debug\\Extensions.dll"#>
+<#@ import namespace="Extensions" #>
 <#@ import namespace="System" #>
 <#@ import namespace="System.IO" #>
 <#@ import namespace="System.Linq" #>
@@ -19,13 +21,15 @@
     // DEFINE YOUR VARIABLES HERE
     //****************************
     // The SQL server name or IP
-    string sqlServer = "C877";
+    string sqlServer = "virtualhost\\sqlexpress";
     // The SQL database to generate the interfaces for
     string sqlDatabase = "proTrace_Jupiter_blank";
     // The namespace to apply to the generated interfaces
-    string classNamespace = "Practicon.Datalayer.Repositories";
+    string classNamespace = "Practicon.Datalayer.Cip.Repositories";
     // The destination folder for the generated classes, relative to this file's location.
     string destinationFolder = "Repositories";
+	// the Schema to loop over
+	string schema = "Cip";
     // Loop over each table and create a repo class
     Server server = new Server(sqlServer);
     server.ConnectionContext.LoginSecure = true;
@@ -35,31 +39,32 @@
     {
         // Skip sys tables
         if(table.Name.StartsWith("sys") || table.Name.StartsWith("tblMimicDataLogged_") 
-                                                 || table.Name.StartsWith("tblMimicSnapShotdata_") || table.Name.StartsWith("tblMimicSnapShots_"))
+                                                 || table.Name.StartsWith("tblMimicSnapShotdata_") || table.Name.StartsWith("tblMimicSnapShots_") || table.Schema != schema)
         {
             continue;
         }
+		var tableName = table.Name.Clean();
 #>
 using System;
 using System.Collections.Generic;
 using Serilog;
-using Practicon.Datalayer.Models;
-using Practicon.Datalayer.Insight;
-using Practicon.Datalayer.Interfaces;
+using Practicon.Datalayer.Cip.Models;
+using Practicon.Datalayer.Cip.Insight;
+using Practicon.Datalayer.Cip.Interfaces;
 namespace <#= classNamespace #>
 {
-    public class <#= table.Name.Replace("tbl", "") + "Repository" #> : <#= "I" + table.Name.Replace("tbl", "") + "Repository" #>
+    public class <#= tableName + "Repository" #> : <#= "I" + tableName + "Repository" #>
     {
-	    private readonly <#= "I" + table.Name.Replace("tbl", "") + "Data"#> _data;
+	    private readonly <#= "I" + tableName + "Data"#> _data;
 		private readonly ILogger _log;
 
-	    public <#= table.Name.Replace("tbl", "") + "Repository" #>(<#= "I" + table.Name.Replace("tbl", "") + "Data data"  #>, ILogger log)
+	    public <#= tableName + "Repository" #>(<#= "I" + tableName + "Data data"  #>, ILogger log)
 		{
 			_data = data;
 			_log = log;
 		}
 
-		public <#= table.Name #> Get(long id)
+		public <#= tableName #> Get(long id)
 		{
 			try
 			{
@@ -69,10 +74,10 @@ namespace <#= classNamespace #>
 			{
 				_log.Error(ex.Message);
 			}
-			return default(<#= table.Name #>);
+			return default(<#= tableName #>);
 		}
 
-		public IEnumerable<<#= table.Name #>> Get()
+		public IEnumerable<<#= tableName #>> Get()
 		{
 			try
 			{
@@ -81,11 +86,11 @@ namespace <#= classNamespace #>
 			catch (Exception ex)
 			{
 				_log.Error(ex.Message);
-				return default(IEnumerable<<#= table.Name #>>);
+				return default(IEnumerable<<#= tableName #>>);
 			}
 		}
         
-	    public void Merge(IEnumerable<<#= table.Name #>> list)
+	    public void Merge(IEnumerable<<#= tableName #>> list)
 		{
 			try
 			{
@@ -97,7 +102,7 @@ namespace <#= classNamespace #>
 			}
 		}
 
-		public void Merge(<#= table.Name #> item)
+		public void Merge(<#= tableName #> item)
 		{
 			try
 			{
@@ -109,7 +114,7 @@ namespace <#= classNamespace #>
 			}
 		}
 
-		public void Delete(IEnumerable<<#= table.Name #>> list)
+		public void Delete(IEnumerable<<#= tableName #>> list)
 		{
 			try
 			{
@@ -136,7 +141,7 @@ namespace <#= classNamespace #>
 }      
 <#
         // Write new repo class to its own file
-        SaveOutput(table.Name.Replace("tbl", "") + "Repository" + ".cs", destinationFolder);
+        SaveOutput(tableName + "Repository" + ".cs", destinationFolder);
     } 
 #>
 <#+

@@ -5,6 +5,8 @@
 <#@ assembly name="Microsoft.SqlServer.Smo" #>
 <#@ assembly name="Microsoft.SqlServer.ConnectionInfo" #>
 <#@ assembly name="Microsoft.SqlServer.Management.Sdk.Sfc" #>
+<#@ assembly name="$(ProjectDir)\\bin\\Debug\\Extensions.dll"#>
+<#@ import namespace="Extensions" #>
 <#@ import namespace="System" #>
 <#@ import namespace="System.IO" #>
 <#@ import namespace="System.Linq" #>
@@ -19,13 +21,15 @@
     // DEFINE YOUR VARIABLES HERE
     //****************************
     // The SQL server name or IP
-    string sqlServer = "C877";
+    string sqlServer = "virtualhost\\sqlexpress";
     // The SQL database to generate the interfaces for
     string sqlDatabase = "proTrace_Jupiter_blank";
     // The namespace to apply to the generated interfaces
-    string classNamespace = "Practicon.Datalayer.Interfaces";
+    string classNamespace = "Practicon.Datalayer.Cip.Interfaces";
     // The destination folder for the generated classes, relative to this file's location.
     string destinationFolder = "Interfaces";
+	//Schema to loop over
+	string schema = "Cip";
     // Loop over each table and create a repo class
     Server server = new Server(sqlServer);
     server.ConnectionContext.LoginSecure = true;
@@ -35,51 +39,47 @@
     {
         // Skip sys tables
         if(table.Name.StartsWith("sys") || table.Name.StartsWith("tblMimicDataLogged_") 
-                                                 || table.Name.StartsWith("tblMimicSnapShotdata_") || table.Name.StartsWith("tblMimicSnapShots_"))
+                                                 || table.Name.StartsWith("tblMimicSnapShotdata_") || table.Name.StartsWith("tblMimicSnapShots_") || table.Schema != schema)
         {
             continue;
         }
+		var tableName = table.Name.Clean();
 #>
 using System.Collections.Generic;
-using Practicon.Datalayer.Models;
+using Practicon.Datalayer.Cip.Models;
 namespace <#= classNamespace #>
 {
-    public interface <#= "I" + table.Name.Replace("tbl", "") + "Repository" #> 
+    public interface <#= "I" + tableName + "Repository" #> 
     {
 		/// <summary>
-        /// Return a single instance of <#= table.Name #>
+        /// Return a single instance of <#= tableName #>
         /// </summary>
-	    <#= table.Name #> Get(long id);
+	    <#= tableName #> Get(long id);
 		
 		/// <summary>
-		/// Return an enumerable collection of <#= table.Name #>
+		/// Return an enumerable collection of <#= tableName #>
 		/// </summary>
-		IEnumerable<<#= table.Name #>> Get();
+		IEnumerable<<#= tableName #>> Get();
 		
-		
-		/// <summary>
-		/// Insert or update a list of <#= table.Name #>
+		/// <summary>1
+		/// Insert or update a list of <#= tableName #>
 		/// </summary>
-	    void Merge(IEnumerable<<#= table.Name #>> list);
+	    void Merge(IEnumerable<<#= tableName #>> list);
 		
-
 		/// <summary>
-		/// Insert or update an instance of <#= table.Name #>
+		/// Insert or update an instance of <#= tableName #>
 		/// </summary>
-		void Merge(<#= table.Name #> item);
+		void Merge(<#= tableName #> item);
 		
-
 		/// <summary>
-		/// Delete a list of <#= table.Name #>
+		/// Delete a list of <#= tableName #>
 		/// </summary>
-		void Delete(IEnumerable<<#= table.Name #>> list);
+		void Delete(IEnumerable<<#= tableName #>> list);
 		
-
 		/// <summary>
-		/// Delete an instance of <#= table.Name #>
+		/// Delete an instance of <#= tableName #>
 		/// </summary>
 		void Delete(long id);
-		
     }
 }      
 <#

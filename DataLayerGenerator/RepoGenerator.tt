@@ -21,13 +21,15 @@
     // DEFINE YOUR VARIABLES HERE
     //****************************
     // The SQL server name or IP
-    string sqlServer = "C877";
+    string sqlServer = "virtualhost\\sqlexpress";
     // The SQL database to generate the interfaces for
     string sqlDatabase = "proTrace_Jupiter_blank";
     // The namespace to apply to the generated interfaces
-    string classNamespace = "Practicon.Datalayer.Insight";
+    string classNamespace = "Practicon.Datalayer.Cip.Insight";
 	// the prefix on your stored procs, if any
 	string prefix = "";
+	// the schema to work on
+	string schema = "Cip";
     // The destination folder for the generated classes, relative to this file's location.
     string destinationFolder = "Insight";
     // Loop over each table and create an Insight.Database repo!
@@ -39,7 +41,7 @@
     {
         // Skip sys tables
         if(table.Name.StartsWith("sys") || table.Name.StartsWith("tblMimicDataLogged_") 
-                                                 || table.Name.StartsWith("tblMimicSnapShotdata_") || table.Name.StartsWith("tblMimicSnapShots_"))
+                                                 || table.Name.StartsWith("tblMimicSnapShotdata_") || table.Name.StartsWith("tblMimicSnapShots_") || table.Schema != schema)
         {
             continue;
         }
@@ -47,26 +49,26 @@
 #>
 using System.Collections.Generic;
 using Insight.Database;
-using Practicon.Datalayer.Models;
+using Practicon.Datalayer.Cip.Models;
 namespace <#= classNamespace #>
 {
-	[Schema("Cip")]
+	[Sql(Schema="<#=schema#>")]
     public interface <#= "I" + tableName + "Data" #> 
     {
         [Sql("<#= prefix +  tableName + "_Get" #>")]
-        <#= table.Name #> Get(long id);
+        <#= tableName #> Get(long id);
 
 		[Sql("<#= prefix +  tableName + "_Get" #>")]
-        IEnumerable<<#= table.Name #>> Get();
+        IEnumerable<<#= tableName #>> Get();
 
 		[Sql("<#= prefix +  tableName + "_MergeBatch" #>")]
-        void Merge(IEnumerable<<#= table.Name #>> list);
+        void Merge(IEnumerable<<#= tableName #>> list);
 
 		[Sql("<#= prefix +  tableName + "_Merge" #>")]
-		void Merge(<#= table.Name #> item);
+		void Merge(<#= tableName #> item);
 
 		[Sql("<#= prefix +  tableName + "_DeleteBatch" #>")]
-        void Delete(IEnumerable<<#= table.Name #>> list);
+        void Delete(IEnumerable<<#= tableName #>> list);
 
 		[Sql("<#= prefix +  tableName + "_Delete" #>")]
 		void Delete(long id);
