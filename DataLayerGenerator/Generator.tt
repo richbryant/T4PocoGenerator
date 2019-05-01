@@ -22,13 +22,15 @@
     // DEFINE YOUR VARIABLES HERE
     //****************************
     // The SQL server name or IP
-    string sqlServer = "C877";
+    string sqlServer = "virtualhost\\sqlexpress";
     // The SQL database to generate the POCOs for
     string sqlDatabase = "proTrace_Jupiter_blank";
     // The namespace to apply to the generated classes
     string classNamespace = "Practicon.Datalayer.Models";
     // The destination folder for the generated classes, relative to this file's location.
     string destinationFolder = "Models";
+	//the schema to work with, if any
+	string schema = "Cip";
     // Loop over each table and create a class file!
     Server server = new Server(sqlServer);
     server.ConnectionContext.LoginSecure = true;
@@ -39,7 +41,7 @@
     {
         // Skip sys tables
         if(table.Name.StartsWith("sys") || table.Name.StartsWith("tblMimicDataLogged_") 
-                                                 || table.Name.StartsWith("tblMimicSnapshotdata_") || table.Name.StartsWith("tblMimicSnapshots_"))
+                                                 || table.Name.StartsWith("tblMimicSnapshotdata_") || table.Name.StartsWith("tblMimicSnapshots_") || table.Schema != schema)
         {
             continue;
         }

@@ -49,8 +49,6 @@ namespace DataLayerGenerator.GenerateSprocs
 
             foreach (var table in tables)
             {
-                
-
                 var indexDataType = DataType.BigInt;
                 foreach (Column column in table.Columns)
                 {
