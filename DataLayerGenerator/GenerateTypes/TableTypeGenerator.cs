@@ -28,11 +28,10 @@ namespace DataLayerGenerator.GenerateTypes
 
                 if (db.UserDefinedTableTypes.Contains(fixedName))
                 {
-                    type = db.UserDefinedTableTypes[fixedName];
                     continue;
                 }
 
-                type = new UserDefinedTableType(db, fixedName);
+                type = new UserDefinedTableType(db, fixedName + "Type");
                 foreach (Column column in table.Columns)
                 {
                     var fixedColumnName = column.Name.Clean();

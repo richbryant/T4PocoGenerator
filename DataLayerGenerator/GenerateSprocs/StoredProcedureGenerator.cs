@@ -100,7 +100,7 @@ namespace DataLayerGenerator.GenerateSprocs
             sproc.Append("FROM " + schema + "." + table.Name + " \n");
             sproc.Append("WHERE (@id is NULL OR (Id = @id))\n");
 
-            var sp = new StoredProcedure(db, prefix + table.Name + "Get")
+            var sp = new StoredProcedure(db, prefix + table.Name + "_Get")
             {
                 TextMode = false, AnsiNullsStatus = false, QuotedIdentifierStatus = false
             };
@@ -113,7 +113,7 @@ namespace DataLayerGenerator.GenerateSprocs
         
         private static void CreateMergeSproc(Table table, Database db, string prefix, string schema = "dbo")
         {
-            var tableType = table.Name.Clean();
+            var tableType = table.Name.Clean() + "Type";
             var types = new List<UserDefinedTableType>();
             foreach (UserDefinedTableType item in db.UserDefinedTableTypes)
             {
@@ -139,7 +139,7 @@ namespace DataLayerGenerator.GenerateSprocs
 
             var sproc = MergeBody(table, schema, tableType, type, pk, columnsList);
 
-            var sp = new StoredProcedure(db, prefix + table.Name + "Merge")
+            var sp = new StoredProcedure(db, prefix + table.Name + "_Merge")
             {
                 TextMode = false,
                 AnsiNullsStatus = false,
@@ -166,7 +166,7 @@ namespace DataLayerGenerator.GenerateSprocs
 
         private static void CreateMergeBatchSproc(Table table, Database db, string prefix, string schema = "dbo")
         {
-            var tableType = table.Name.Clean();
+            var tableType = table.Name.Clean() + "Type";
 
             var types = new List<UserDefinedTableType>();
             foreach (UserDefinedTableType item in db.UserDefinedTableTypes)
@@ -193,7 +193,7 @@ namespace DataLayerGenerator.GenerateSprocs
 
             var sproc = MergeBatchBody(table, schema, pk, columnsList, type);
 
-            var sp = new StoredProcedure(db, prefix + table.Name + "MergeBatch")
+            var sp = new StoredProcedure(db, prefix + table.Name + "_MergeBatch")
             {
                 TextMode = false,
                 AnsiNullsStatus = false,
@@ -223,7 +223,7 @@ namespace DataLayerGenerator.GenerateSprocs
             var sproc = new StringBuilder("DELETE FROM " + schema + ".[" + table.Name + "]\n");
             sproc.Append("WHERE [" + pk + "] = @id");
 
-            var sp = new StoredProcedure(db, prefix + table.Name + "Delete")
+            var sp = new StoredProcedure(db, prefix + table.Name + "_Delete")
             {
                 TextMode = false,
                 AnsiNullsStatus = false,
@@ -239,7 +239,7 @@ namespace DataLayerGenerator.GenerateSprocs
 
         private static void CreateDeleteBatchSproc(Table table, Database db, string prefix, string schema = "dbo")
         {
-            var tableType = table.Name.Clean();
+            var tableType = table.Name.Clean() + "Type";
 
             var pk = "";
             foreach (Column column in table.Columns)
@@ -262,7 +262,7 @@ namespace DataLayerGenerator.GenerateSprocs
             var sproc = new StringBuilder("DELETE FROM " + schema + ".[" + table.Name + "]\n");
             sproc.Append("WHERE [" + pk + "] IN (SELECT [" + pk + "] FROM @list)");
 
-            var sp = new StoredProcedure(db, prefix + table.Name + "DeleteBatch")
+            var sp = new StoredProcedure(db, prefix + table.Name + "_DeleteBatch")
             {
                 TextMode = false,
                 AnsiNullsStatus = false,
@@ -329,8 +329,9 @@ namespace DataLayerGenerator.GenerateSprocs
             for (var i = 1; i < columnsList.Count; i++)
             {
                 sproc.Append("\t\t\t,source.[" + columnsList[i] + "]");
-                sproc.Append(i < columnsList.Count - 1 ? " \n" : "); \n");
+                sproc.Append(i < columnsList.Count - 1 ? " \n" : ") \n");
             }
+            sproc.Append("OUTPUT inserted." + pk + ";");
 
             return sproc;
         }
